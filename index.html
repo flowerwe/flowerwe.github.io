@@ -414,15 +414,32 @@
                 console.error("載入失敗:", error);
             } finally { hideLoading(); }
         }
+        
+async function saveData() {
+    // 準備要傳送給後端的資料結構，必須對應後端的 f_members, f_data, f_comps
+    const payload = {
+        action: 'updateAll',
+        f_members: members,      // 對應後端讀取的 key
+        f_data: flowers,        // 對應後端花朵資料的 key
+        f_comps: competitions   // 對應後端競賽紀錄的 key
+    };
 
-        async function saveData() {
-            showLoading();
-            const payload = { action: 'updateAll', f_members: members, f_data: flowers, f_comps: competitions };
-            try {
-                await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
-            } catch (e) { console.error("儲存失敗", e); }
-            setTimeout(hideLoading, 1000);
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+            console.log("同步成功");
+        } else {
+            alert("儲存失敗：" + result.message);
         }
+    } catch (error) {
+        console.error("網路錯誤:", error);
+        alert("無法連線至資料庫，請檢查網路或 API 網址");
+    }
+}
 
         function renderMembers() {
             const query = (document.getElementById('member-search').value || "").toLowerCase();
@@ -499,21 +516,53 @@
                     </label>`).join('');
         }
 
-        async function saveMemberData() {
-            const name = document.getElementById('m-name').value.trim();
-            if (!name) return alert("請輸入名稱");
-            const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
-            const ownedFlowers = Array.from(checks).map(c => c.value.toString());
+async function saveMemberData() {
+    const name = document.getElementById('m-name').value;
+    const gameId = document.getElementById('m-gameid').value;
+    const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
+    const selectedFlowerIds = Array.from(checks).map(c => c.value);
 
-            if (window.editingMemberId) {
-                const idx = members.findIndex(m => m.id.toString() === window.editingMemberId.toString());
-                if (idx !== -1) members[idx] = { ...members[idx], name, gameId: document.getElementById('m-gameid').value, ownedFlowers };
-            } else {
-                members.push({ id: Date.now().toString(), name, gameId: document.getElementById('m-gameid').value, ownedFlowers });
-            }
-            closeModal(); renderMembers(); await saveData();
-        }
+    if (!name) return alert('請輸入名稱');
 
+    const newMember = {
+        id: window.editingMemberId || Date.now().toString(),
+        name: name,
+        gameId: gameId,
+        ownedFlowers: selectedFlowerIds
+    };
+
+    // 更新本地陣列
+    if (window.editingMemberId) {
+        const idx = members.findIndex(m => m.id.toString() === window.editingMemberId.toString());
+        if (idx !== -1) members[idx] = newMember;
+    } else {
+        members.push(newMember);
+    }
+
+    renderMembers(); // 重新渲染畫面
+    closeModal();
+    
+    // 重要：呼叫同步函式傳回 Google Sheet
+    await saveData(); 
+}
+// 在 showAddFlower 彈窗 HTML 中加入：
+// <input type="file" id="f-image-input" accept="image/*" onchange="previewImage(event)">
+// <img id="image-preview" src="" style="width:100px; aspect-ratio:1/1; object-fit:cover; display:none;">
+
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const preview = document.getElementById('image-preview');
+        preview.src = e.target.result;
+        preview.style.display = 'block';
+        // 將 base64 暫存，等待儲存時送往後端 uploadToDrive
+        window.tempImageData = e.target.result; 
+    };
+    reader.readAsDataURL(file);
+}
         async function deleteMember(id) {
             if (!confirm("確定要刪除此成員嗎？")) return;
             members = members.filter(m => m.id.toString() !== id.toString());
@@ -528,6 +577,55 @@
                 .sort((a, b) => (b.score || 0) - (a.score || 0))
                 .map(f => `<div class="flower-card" onclick="showFlowerDetail('${f.id}')"><img src="${f.image || 'https://via.placeholder.com/150'}"><div class="name grade-${f.grade}">${f.name}</div></div>`).join('');
         }
+        async function saveFlowerData() {
+    const name = document.getElementById('f-name').value;
+    if (!name) return alert("請輸入花朵名稱");
+
+    const newFlower = {
+        id: window.editingFlowerId || Date.now().toString(),
+        name: name,
+        grade: document.getElementById('f-grade').value,
+        score: document.getElementById('f-score').value,
+        // 如果有新上傳的照片(Base64)，就傳送給後端處理；否則保留舊連結
+        image: window.tempImageData || (window.editingFlowerId ? flowers.find(f => f.id == window.editingFlowerId).image : "")
+    };
+
+    // 更新本地陣列
+    if (window.editingFlowerId) {
+        const idx = flowers.findIndex(f => f.id == window.editingFlowerId);
+        flowers[idx] = newFlower;
+    } else {
+        flowers.push(newFlower);
+    }
+
+    // 呼叫後端同步
+    await syncToGoogleSheet();
+    renderFlowers(); // 重新渲染「一行三個」畫面
+    closeModal();
+    window.tempImageData = null; // 清除暫存
+}
+
+async function syncToGoogleSheet() {
+    const payload = {
+        action: 'updateAll',
+        f_data: flowers,      // 務必對應後端的 key
+        f_members: members,
+        f_comps: competitions
+    };
+
+    try {
+        const resp = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+        if(res.status === 'success') {
+            console.log("Google One 資料同步成功");
+        }
+    } catch (e) {
+        alert("儲存失敗，請檢查網路！");
+    }
+}
 
 // 修改 showFlowerDetail 函式中的圖片樣式
 function showFlowerDetail(id) {
@@ -647,36 +745,27 @@ function showFlowerDetail(id) {
             await saveData();
         }
 
-        function renderRecords() {
-            // 獲取兩個搜尋框的數值
-            const nameQ = (document.getElementById('r-search-name').value || "").toLowerCase();
-            const flowerQ = (document.getElementById('r-search-flower').value || "").toLowerCase();
+function renderRecords() {
+    const nameQ = document.getElementById('r-search-name').value.toLowerCase();
+    const flowerQ = document.getElementById('r-search-flower').value.toLowerCase(); // 搜尋花朵框
+    const body = document.getElementById('r-list-body');
 
-            const body = document.getElementById('r-list-body');
-            if (!body) return;
+    const filtered = competitions.filter(r => 
+        r.memberName.toLowerCase().includes(nameQ) && 
+        (r.flowerNames || "").toLowerCase().includes(flowerQ)
+    );
 
-            // 同時過濾「姓名」與「參賽花朵」
-            const filtered = competitions.filter(r => {
-                const matchName = r.memberName.toLowerCase().includes(nameQ);
-                const matchFlower = (r.flowerNames || "").toLowerCase().includes(flowerQ);
-                return matchName && matchFlower; // 兩者都符合才顯示
-            });
-
-            // 依照時間排序 (最新的在上面) 並渲染
-            body.innerHTML = filtered.sort((a, b) => b.id - a.id).map(r => `
+    body.innerHTML = filtered.map(r => `
         <tr>
-            <td><strong>${r.memberName}</strong></td>
-            <td style="font-size: 13px; color: #444;">${r.flowerNames}</td>
+            <td>${r.memberName}</td>
+            <td style="font-size:11px;">${r.flowerNames}</td>
             <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
             <td>
-                <div style="display: flex; gap: 4px;">
-                    <button onclick="editRecord('${r.id}')" style="background:#eee; border:1px solid #ccc; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px;">修改</button>
-                    <button onclick="deleteRecord('${r.id}')" style="background:#ffebee; border:1px solid #ffcdd2; color:#c62828; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px;">刪除</button>
-                </div>
+                <button onclick="editRecord('${r.id}')">改</button>
             </td>
         </tr>
     `).join('');
-        }
+}
         function editRecord(id) {
             window.editingRecordId = id.toString();
             const r = competitions.find(x => x.id.toString() === id.toString());
@@ -715,3 +804,4 @@ function showFlowerDetail(id) {
 </body>
 
 </html>
+
