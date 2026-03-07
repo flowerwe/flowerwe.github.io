@@ -389,7 +389,7 @@
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbzT1SfRLaXCgEFJcpGBGTGJtCN_iH0Q9SimVRXcAgsSxWYoUXu7EgTtr1IaENBfho/exec";
-
+// 之後所有的 fetch 統一使用 SCRIPT_URL
         let members = [];
         let flowers = [];
         let competitions = [];
@@ -401,10 +401,11 @@
 async function init() {
     document.getElementById('loading-screen').style.display = 'flex';
     try {
-        const response = await fetch(SCRIPT_URL);
+        // 修正：將 API_URL 改為 SCRIPT_URL
+        const response = await fetch(SCRIPT_URL); 
         const data = await response.json();
         
-        // 必須對應後端 return 的 Key 名稱
+        // 確保資料正確對接後端 GAS 傳出的 Key
         members = data.f_members || [];
         flowers = data.f_data || [];
         competitions = data.f_comps || [];
@@ -412,11 +413,12 @@ async function init() {
         renderFlowers();
         renderMembers();
         renderRecords();
-        console.log("雲端資料加載成功");
+        console.log("資料讀取完成");
     } catch (e) {
-        console.error("資料載入失敗:", e);
-        alert("無法連線至雲端，請檢查網址是否正確或稍後再試");
+        console.error("載入出錯:", e);
+        alert("從雲端讀取資料失敗，請檢查網路或 API 網址。");
     }
+    // 無論成功或失敗，都隱藏載入畫面
     document.getElementById('loading-screen').style.display = 'none';
 }
 async function loadData() {
@@ -441,25 +443,22 @@ async function loadData() {
 }
         
 async function saveData() {
-    console.log("開始同步至雲端...");
+    console.log("開始同步...");
     const payload = {
-        action: 'updateAll',
+        action: 'updateAll', // 務必加上這行，後端才會執行儲存
         f_members: members,
         f_data: flowers,
         f_comps: competitions
     };
 
     try {
-        const response = await fetch(SCRIPT_URL, {
+        await fetch(SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors', // 解決 Google 重定向導致的 CORS 報錯
+            mode: 'no-cors', // 解決 Google Apps Script 跳轉問題
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(payload)
         });
-        
-        // 因為 no-cors 模式無法讀取回傳值，我們假設成功或設定延遲提示
-        console.log("同步請求已發送");
-        // alert("同步中，請稍候..."); 
+        console.log("已送出同步請求");
     } catch (e) {
         console.error("儲存失敗:", e);
     }
@@ -629,8 +628,6 @@ function previewImage(event) {
     window.tempImageData = null; // 清除暫存
 }
 
-// 請務必確認此網址正確，且結尾無空格
-const SCRIPT_URL = "你的新部署網址"; 
 
 async function syncToGoogleSheet() {
     console.log("開始同步至 Google One...");
@@ -643,30 +640,6 @@ async function syncToGoogleSheet() {
         f_comps: competitions   // 對應後端 f_comps
     };
 
-    try {
-        const response = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'cors', 
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8', 
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        
-        if (result.status === "success") {
-            alert("✅ 同步成功！資料已儲存至雲端。");
-            console.log("Server Response:", result);
-        } else {
-            alert("❌ 儲存失敗：" + (result.message || "未知錯誤"));
-        }
-    } catch (error) {
-        console.error("連線異常:", error);
-        // 如果發生 CORS 錯誤但資料其實有進去，是因為 Google 的跳轉機制
-        alert("連線資料庫時發生通訊錯誤，請重新整理網頁檢查資料是否已更新。");
-    }
-}
 
 // 修改 showFlowerDetail 函式中的圖片樣式
 function showFlowerDetail(id) {
@@ -845,6 +818,7 @@ function renderRecords() {
 </body>
 
 </html>
+
 
 
 
