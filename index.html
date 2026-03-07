@@ -364,7 +364,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwGiBhXvLgQBsm9QdUBUEOIBrayE636hk5tOhUy1JnSPBzmBA75ckNiFabmjurH5CkY/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwl744VRLxWH93yO1oD9fU6ATgd-Mp0HcQ0gN2BzP8MfY7j8bhPlrUeYk84K3umbs9U/exec";
         let members = [];
         let flowers = [];
         let competitions = [];
@@ -388,46 +388,38 @@
             document.getElementById('loading-screen').style.display = 'none';
         }
 
-async function saveData() {
-    // 1. 檢查是否為管理員（避免誤觸）
-    if (!isAdmin) {
+// 加上 bypass 參數，預設為 false
+async function saveData(bypass = false) {
+    // 只有在 不是管理員 且 沒有強制繞過 的情況下才阻擋
+    if (!isAdmin && !bypass) {
         console.warn("非管理員身分，取消儲存");
         return;
     }
 
-    // 2. 構建符合後端要求的 payload
     const payload = {
-        action: 'updateAll',  // 這是後端判斷的關鍵
+        action: 'updateAll',
         f_members: members,
         f_data: flowers,
         f_comps: competitions
     };
 
-    console.log("正在嘗試儲存...", payload);
     document.getElementById('loading-screen').style.display = 'flex';
 
     try {
-        // 使用 POST 送出
-        const response = await fetch(SCRIPT_URL, {
+        await fetch(SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors', // 必須使用 no-cors 繞過 Google 限制
-            headers: {
-                'Content-Type': 'text/plain' // 雖然是 JSON，但用 text/plain 比較穩
-            },
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(payload)
         });
-
-        // 註：no-cors 模式下 response.status 會是 0，這是正常的
-        console.log("儲存指令已送出");
-        alert("資料已嘗試同步至雲端！");
+        console.log("資料同步請求已發送");
     } catch (e) {
-        console.error("儲存過程發生錯誤:", e);
-        alert("儲404 錯誤或網路問題: " + e.message);
+        console.error("儲存出錯:", e);
+        alert("同步失敗！");
     } finally {
         document.getElementById('loading-screen').style.display = 'none';
     }
 }
-
         function renderMembers() {
             const q = (document.getElementById('member-search').value || "").toLowerCase();
             const grid = document.getElementById('member-card-grid');
@@ -469,13 +461,29 @@ async function saveData() {
             document.getElementById('main-modal').style.display = 'flex';
         }
 
-        async function saveMemberData() {
-            const name = document.getElementById('m-name').value;
-            const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
-            const data = { id: window.editingMemberId || Date.now().toString(), name, gameId: document.getElementById('m-gameid').value, ownedFlowers: Array.from(checks).map(c => c.value) };
-            if (window.editingMemberId) members[members.findIndex(x => x.id.toString() === window.editingMemberId.toString())] = data; else members.push(data);
-            renderMembers(); closeModal(); await saveData();
-        }
+async function saveMemberData() {
+    const name = document.getElementById('m-name').value;
+    if (!name) { alert("請輸入名稱"); return; }
+
+    const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
+    const data = { 
+        id: window.editingMemberId || Date.now().toString(), 
+        name, 
+        gameId: document.getElementById('m-gameid').value, 
+        ownedFlowers: Array.from(checks).map(c => c.value) 
+    };
+
+    if (window.editingMemberId) {
+        members[members.findIndex(x => x.id.toString() === window.editingMemberId.toString())] = data;
+    } else {
+        members.push(data);
+    }
+
+    renderMembers();
+    closeModal();
+    // 關鍵：呼叫 saveData 時傳入 true，繞過管理員檢查
+    await saveData(true); 
+}
 
         function renderFlowers() {
             const q = document.getElementById('flower-search').value.toLowerCase();
@@ -626,5 +634,6 @@ async function saveFlower(editId) {
     </script>
 </body>
 </html>
+
 
 
