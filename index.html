@@ -530,41 +530,40 @@ async function saveMemberData() {
             document.getElementById('main-modal').style.display = 'flex';
         }
 
-async function saveFlower(editId) {
-    const fileInput = document.getElementById('f-img');
-    const file = fileInput ? fileInput.files[0] : null;
-    
-    let imgData = (editId !== 'null' && editId !== null) 
-        ? flowers.find(x => x.id.toString() === editId.toString()).image 
-        : "";
+async function saveFlower() {
+    const id = document.getElementById('f-id').value;
+    const file = document.getElementById('f-img').files[0];
+    let imgData = "";
 
-    // 如果有選新檔案，轉換成 Base64
     if (file) {
-        imgData = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.readAsDataURL(file);
-        });
+        // 依然要壓縮，減少上傳到 Drive 的流量壓力
+        imgData = await compressImage(file, 600, 0.7); 
+    } else if (id) {
+        const old = flowers.find(x => x.id === parseInt(id));
+        imgData = old ? old.image : ""; // 如果本來就是 Drive 網址，就繼續延用
     }
 
-    const data = {
-        id: (editId !== 'null' && editId !== null) ? editId : Date.now().toString(),
+    const newFlower = {
+        id: id ? parseInt(id) : Date.now(),
         name: document.getElementById('f-name').value,
         grade: document.getElementById('f-grade').value,
-        score: document.getElementById('f-score').value,
-        image: imgData // 這裡如果是新圖片，會是 data:image/jpeg;base64...
+        score: parseInt(document.getElementById('f-score').value) || 0,
+        image: imgData, // 傳送給後端處理
+        // ... 其他欄位 (source, date 等)
     };
 
-    if (editId !== 'null' && editId !== null) {
-        const idx = flowers.findIndex(x => x.id.toString() === editId.toString());
-        flowers[idx] = data;
+    if (id) {
+        const idx = flowers.findIndex(f => f.id === parseInt(id));
+        flowers[idx] = newFlower;
     } else {
-        flowers.push(data);
+        flowers.push(newFlower);
     }
 
     renderFlowers();
+    showLoading(); // 顯示讀取畫面，因為上傳 Drive 需要幾秒鐘
+    await saveData(); 
+    hideLoading();
     closeModal();
-    await saveData(); // 這裡會觸發 fetch POST
 }
 
         function renderRecords() {
@@ -635,6 +634,7 @@ async function saveFlower(editId) {
     </script>
 </body>
 </html>
+
 
 
 
