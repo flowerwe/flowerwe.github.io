@@ -399,13 +399,18 @@
         function showLoading() { document.getElementById('loading-screen').style.display = 'flex'; }
         function hideLoading() { document.getElementById('loading-screen').style.display = 'none'; }
 async function init() {
-    document.getElementById('loading-screen').style.display = 'flex';
+    const loadingText = document.querySelector('#loading-screen p');
+    loadingText.innerText = "正在發起連線...";
+    console.log("START INIT");
+
     try {
-        // 修正：將 API_URL 改為 SCRIPT_URL
-        const response = await fetch(SCRIPT_URL); 
-        const data = await response.json();
+        const resp = await fetch(SCRIPT_URL);
+        loadingText.innerText = "已連線，正在解析資料...";
+        console.log("FETCH SUCCESS", resp.status);
+
+        const data = await resp.json();
+        console.log("DATA RECEIVED", data);
         
-        // 確保資料正確對接後端 GAS 傳出的 Key
         members = data.f_members || [];
         flowers = data.f_data || [];
         competitions = data.f_comps || [];
@@ -413,13 +418,12 @@ async function init() {
         renderFlowers();
         renderMembers();
         renderRecords();
-        console.log("資料讀取完成");
+        
+        document.getElementById('loading-screen').style.display = 'none';
     } catch (e) {
-        console.error("載入出錯:", e);
-        alert("從雲端讀取資料失敗，請檢查網路或 API 網址。");
+        loadingText.innerHTML = `<b style="color:red">連線失敗：${e.message}</b>`;
+        console.error("FATAL ERROR", e);
     }
-    // 無論成功或失敗，都隱藏載入畫面
-    document.getElementById('loading-screen').style.display = 'none';
 }
 async function loadData() {
     try {
@@ -769,16 +773,17 @@ function renderRecords() {
         (r.flowerNames || "").toLowerCase().includes(flowerQ)
     );
 
-    body.innerHTML = filtered.map(r => `
-        <tr>
-            <td>${r.memberName}</td>
-            <td style="font-size:11px;">${r.flowerNames}</td>
-            <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
-            <td>
-                <button onclick="editRecord('${r.id}')">改</button>
-            </td>
-        </tr>
-    `).join('');
+body.innerHTML = filtered.map(r => `
+    <tr>
+        <td>${r.memberName}</td>
+        <td style="font-size:11px;">${r.flowerNames}</td>
+        <td><span class="grade-${r.maxGrade}" style="font-weight:bold;">${r.maxGrade}</span></td>
+        <td>
+            <button onclick="editRecord('${r.id}')" style="padding:2px 5px;">改</button>
+            ${isAdmin ? `<button onclick="deleteRecord('${r.id}')" style="padding:2px 5px; background:#d9534f; color:white; border:none; border-radius:3px;">刪</button>` : ''}
+        </td>
+    </tr>
+`).join('');
 }
         function editRecord(id) {
             window.editingRecordId = id.toString();
@@ -813,11 +818,12 @@ function renderRecords() {
             renderMembers(); renderFlowers();
         }
 
-        window.onload = init;
+        init();
     </script>
 </body>
 
 </html>
+
 
 
 
