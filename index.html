@@ -364,7 +364,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwl744VRLxWH93yO1oD9fU6ATgd-Mp0HcQ0gN2BzP8MfY7j8bhPlrUeYk84K3umbs9U/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxphCpTVnjQurd5VLQM5B5NrSSBmPfkv0PqmSMAtNeO51M554i0bh4s_m0tad7I45zO/exec";
         let members = [];
         let flowers = [];
         let competitions = [];
@@ -390,11 +390,7 @@
 
 // 加上 bypass 參數，預設為 false
 async function saveData(bypass = false) {
-    // 只有在 不是管理員 且 沒有強制繞過 的情況下才阻擋
-    if (!isAdmin && !bypass) {
-        console.warn("非管理員身分，取消儲存");
-        return;
-    }
+    if (!isAdmin && !bypass) return;
 
     const payload = {
         action: 'updateAll',
@@ -405,20 +401,18 @@ async function saveData(bypass = false) {
 
     document.getElementById('loading-screen').style.display = 'flex';
 
-    try {
-        await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(payload)
-        });
-        console.log("資料同步請求已發送");
-    } catch (e) {
-        console.error("儲存出錯:", e);
-        alert("同步失敗！");
-    } finally {
-        document.getElementById('loading-screen').style.display = 'none';
-    }
+    // 改用 Google 官方的高速傳輸方式
+    google.script.run
+        .withSuccessHandler(function(res) {
+            document.getElementById('loading-screen').style.display = 'none';
+            alert("同步成功！");
+        })
+        .withFailureHandler(function(err) {
+            document.getElementById('loading-screen').style.display = 'none';
+            alert("儲存失敗：" + err);
+        })
+        .doPost({postData: {contents: JSON.stringify(payload)}}); 
+        // 註：這行是為了模擬 e.postData，如果直接呼叫後端函數會更穩
 }
         function renderMembers() {
             const q = (document.getElementById('member-search').value || "").toLowerCase();
@@ -634,6 +628,7 @@ async function saveFlower(editId) {
     </script>
 </body>
 </html>
+
 
 
 
