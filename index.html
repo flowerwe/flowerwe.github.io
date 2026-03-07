@@ -388,18 +388,45 @@
             document.getElementById('loading-screen').style.display = 'none';
         }
 
-        async function saveData() {
-            const payload = { action: 'updateAll', f_members: members, f_data: flowers, f_comps: competitions };
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-                console.log("已送出同步請求");
-            } catch (e) { console.error("儲存失敗:", e); }
-        }
+async function saveData() {
+    // 1. 檢查是否為管理員（避免誤觸）
+    if (!isAdmin) {
+        console.warn("非管理員身分，取消儲存");
+        return;
+    }
+
+    // 2. 構建符合後端要求的 payload
+    const payload = {
+        action: 'updateAll',  // 這是後端判斷的關鍵
+        f_members: members,
+        f_data: flowers,
+        f_comps: competitions
+    };
+
+    console.log("正在嘗試儲存...", payload);
+    document.getElementById('loading-screen').style.display = 'flex';
+
+    try {
+        // 使用 POST 送出
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // 必須使用 no-cors 繞過 Google 限制
+            headers: {
+                'Content-Type': 'text/plain' // 雖然是 JSON，但用 text/plain 比較穩
+            },
+            body: JSON.stringify(payload)
+        });
+
+        // 註：no-cors 模式下 response.status 會是 0，這是正常的
+        console.log("儲存指令已送出");
+        alert("資料已嘗試同步至雲端！");
+    } catch (e) {
+        console.error("儲存過程發生錯誤:", e);
+        alert("儲404 錯誤或網路問題: " + e.message);
+    } finally {
+        document.getElementById('loading-screen').style.display = 'none';
+    }
+}
 
         function renderMembers() {
             const q = (document.getElementById('member-search').value || "").toLowerCase();
@@ -494,17 +521,42 @@
             document.getElementById('main-modal').style.display = 'flex';
         }
 
-        async function saveFlower(editId) {
-            const file = document.getElementById('f-img').files[0];
-            let imgData = editId !== 'null' ? flowers.find(x => x.id.toString() === editId).image : "";
-            if (file) {
-                const reader = new FileReader();
-                imgData = await new Promise(r => { reader.onload = e => r(e.target.result); reader.readAsDataURL(file); });
-            }
-            const data = { id: editId !== 'null' ? editId : Date.now().toString(), name: document.getElementById('f-name').value, grade: document.getElementById('f-grade').value, score: document.getElementById('f-score').value, image: imgData };
-            if (editId !== 'null') flowers[flowers.findIndex(x => x.id.toString() === editId)] = data; else flowers.push(data);
-            renderFlowers(); closeModal(); await saveData();
-        }
+async function saveFlower(editId) {
+    const fileInput = document.getElementById('f-img');
+    const file = fileInput ? fileInput.files[0] : null;
+    
+    let imgData = (editId !== 'null' && editId !== null) 
+        ? flowers.find(x => x.id.toString() === editId.toString()).image 
+        : "";
+
+    // 如果有選新檔案，轉換成 Base64
+    if (file) {
+        imgData = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(file);
+        });
+    }
+
+    const data = {
+        id: (editId !== 'null' && editId !== null) ? editId : Date.now().toString(),
+        name: document.getElementById('f-name').value,
+        grade: document.getElementById('f-grade').value,
+        score: document.getElementById('f-score').value,
+        image: imgData // 這裡如果是新圖片，會是 data:image/jpeg;base64...
+    };
+
+    if (editId !== 'null' && editId !== null) {
+        const idx = flowers.findIndex(x => x.id.toString() === editId.toString());
+        flowers[idx] = data;
+    } else {
+        flowers.push(data);
+    }
+
+    renderFlowers();
+    closeModal();
+    await saveData(); // 這裡會觸發 fetch POST
+}
 
         function renderRecords() {
             const nameQ = document.getElementById('r-search-name').value.toLowerCase();
@@ -574,3 +626,4 @@
     </script>
 </body>
 </html>
+
