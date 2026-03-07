@@ -364,7 +364,7 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyWD5iWl_TkDRzdg54alQob3r9_DqM_LtyKUMq07TF2ihltVLwEuu2gbhiVZUkaMd86/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-zKi2H08LmVdC5K1jPFw5J7Dz5C_VOFtgAEklrrq4NtcS7PGjoQljtQ09cGVgAEj1/exec";
         let members = [];
         let flowers = [];
         let competitions = [];
@@ -389,37 +389,27 @@
         }
 
 // 加上 bypass 參數，預設為 false
-async function saveData(bypass = false) {
-    if (!isAdmin && !bypass) {
-        console.warn("權限不足，取消儲存");
-        return;
+async function saveData() {
+    console.log("正在同步至雲端，請勿關閉視窗...");
+    const payload = [
+        { key: 'f_members', value: members },
+        { key: 'f_data', value: flowers },
+        { key: 'f_comps', value: competitions }
+    ];
+
+    for (const item of payload) {
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(item)
+            });
+        } catch (e) {
+            console.error(`${item.key} 同步出錯:`, e);
+        }
     }
-
-    const payload = {
-        action: 'updateAll',
-        f_members: members,
-        f_data: flowers,
-        f_comps: competitions
-    };
-
-    document.getElementById('loading-screen').style.display = 'flex';
-
-    // 🛡️ 使用 Google 內建通訊方式，這比 fetch 穩定 100 倍
-    google.script.run
-        .withSuccessHandler(function(response) {
-            document.getElementById('loading-screen').style.display = 'none';
-            const res = JSON.parse(response);
-            if(res.status === "success") {
-                alert("✅ 資料與圖片同步成功！");
-            } else {
-                alert("❌ 儲存失敗：" + res.message);
-            }
-        })
-        .withFailureHandler(function(error) {
-            document.getElementById('loading-screen').style.display = 'none';
-            alert("❌ 系統錯誤：" + error);
-        })
-        .processDataFromWeb(payload); // 我們等一下要在後端新增這個函式
+    console.log("同步完成！");
 }
         function renderMembers() {
             const q = (document.getElementById('member-search').value || "").toLowerCase();
@@ -531,39 +521,38 @@ async function saveMemberData() {
         }
 
 async function saveFlower() {
-    const id = document.getElementById('f-id').value;
+    const id = document.getElementById('f-id').value; // 取得隱藏欄位的 ID
     const file = document.getElementById('f-img').files[0];
-    let imgData = "";
+    let base64 = "";
 
+    // 處理圖片
     if (file) {
-        // 依然要壓縮，減少上傳到 Drive 的流量壓力
-        imgData = await compressImage(file, 600, 0.7); 
+        base64 = await compressImage(file, 400, 0.6); 
     } else if (id) {
-        const old = flowers.find(x => x.id === parseInt(id));
-        imgData = old ? old.image : ""; // 如果本來就是 Drive 網址，就繼續延用
+        // 如果是編輯模式且沒選新圖，保留原圖
+        const oldFlower = flowers.find(x => x.id === parseInt(id));
+        base64 = oldFlower ? oldFlower.image : "";
     }
 
-    const newFlower = {
+    const data = {
         id: id ? parseInt(id) : Date.now(),
         name: document.getElementById('f-name').value,
+        source: document.getElementById('f-source').value,
         grade: document.getElementById('f-grade').value,
         score: parseInt(document.getElementById('f-score').value) || 0,
-        image: imgData, // 傳送給後端處理
-        // ... 其他欄位 (source, date 等)
+        image: base64
     };
 
     if (id) {
-        const idx = flowers.findIndex(f => f.id === parseInt(id));
-        flowers[idx] = newFlower;
+        const idx = flowers.findIndex(x => x.id === parseInt(id));
+        if (idx !== -1) flowers[idx] = data;
     } else {
-        flowers.push(newFlower);
+        flowers.push(data);
     }
 
-    renderFlowers();
-    showLoading(); // 顯示讀取畫面，因為上傳 Drive 需要幾秒鐘
-    await saveData(); 
-    hideLoading();
-    closeModal();
+    renderFlowers(); // 立即更新畫面
+    await saveData(); // 【重要】傳送到雲端
+    closeModal();    // 關閉視窗
 }
 
         function renderRecords() {
@@ -634,6 +623,7 @@ async function saveFlower() {
     </script>
 </body>
 </html>
+
 
 
 
