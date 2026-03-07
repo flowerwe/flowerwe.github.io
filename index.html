@@ -133,61 +133,54 @@
 
         .member-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 強制一行三個 */
-            gap: 8px; /* 縮小間距以適應手機 */
-            margin-top: 10px;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
         }
 
         .member-card {
-            padding: 6px;
-            font-size: 18px; /* 縮小字體 */
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            min-width: 0; /* 防止內容撐開 */
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 5px solid #666;
+            cursor: pointer;
         }
 
-/* 花朵清單網格：強制三欄 */
-.flower-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* 強制一行三個 */
-    gap: 8px; /* 縮小間距適應手機 */
-    margin-top: 10px;
-}
+        .flower-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
 
-/* 花朵卡片：方形照片關鍵 */
-.flower-card {
-    background: var(--card-bg);
-    padding: 5px; /* 縮小內距 */
-    border-radius: 6px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-    cursor: pointer;
-    text-align: center;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+        .flower-card {
+            background: var(--card-bg);
+            padding: 5px;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+            cursor: pointer;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-/* 實作正方形照片 */
-.flower-card img {
-    width: 100%; /* 寬度填滿卡片 */
-    aspect-ratio: 1 / 1; /* 關鍵：強制寬高比 1:1 (正方形) */
-    object-fit: cover; /* 關鍵：圖片自動裁切填滿方形，不變形 */
-    border-radius: 4px; /* 方形也要加點圓角 */
-}
+            .flower-card img {
+                width: 100%;
+                aspect-ratio: 1 / 1;
+                object-fit: cover;
+                border-radius: 4px;
+            }
 
-/* 花名樣式：防止擠爆方形卡片 */
-.flower-card .name {
-    font-size: 13px; /* 字體縮小，適合三欄排版 */
-    margin-top: 4px;
-    font-weight: bold;
-    width: 100%;
-    /* 防止長花名撐開卡片 */
-    overflow: hidden; 
-    text-overflow: ellipsis; /* 多出的字變 ... */
-    white-space: nowrap; /* 不換行 */
-}
+            .flower-card .name {
+                font-size: 13px;
+                margin-top: 4px;
+                font-weight: bold;
+                width: 100%;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
 
         .grade-仙品 {
             color: var(--red);
@@ -275,29 +268,14 @@
                 box-sizing: border-box;
             }
 
-        .member-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 15px;
-        }
-
-        .member-card {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-left: 5px solid #666;
-            cursor: pointer;
-        }
-
         @media screen and (max-width: 600px) {
             th, td {
                 padding: 5px 2px;
-                font-size: 11px; /* 競賽文字在手機上再縮小 */
+                font-size: 11px;
             }
 
             .controls input {
-                width: 46%; /* 搜尋框並排 */
+                width: 46%;
                 margin-bottom: 5px;
             }
         }
@@ -342,7 +320,6 @@
         <div class="controls">
             <input type="text" id="r-search-name" placeholder="🔍 搜尋成員名稱..." oninput="renderRecords()">
             <input type="text" id="r-search-flower" placeholder="🌸 搜尋參賽花朵..." oninput="renderRecords()">
-
             <button class="add-btn" onclick="showAddRecord()">+ 新增紀錄</button>
         </div>
         <div style="overflow-x: auto;">
@@ -358,7 +335,6 @@
             </table>
         </div>
     </div>
-
 
     <div id="main-modal" class="modal" onclick="closeModal()">
         <div class="modal-content" onclick="event.stopPropagation()">
@@ -389,428 +365,204 @@
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbzT1SfRLaXCgEFJcpGBGTGJtCN_iH0Q9SimVRXcAgsSxWYoUXu7EgTtr1IaENBfho/exec";
-// 之後所有的 fetch 統一使用 SCRIPT_URL
         let members = [];
         let flowers = [];
         let competitions = [];
         let isAdmin = false;
-        window.editingMemberId = null;
 
-        function showLoading() { document.getElementById('loading-screen').style.display = 'flex'; }
-        function hideLoading() { document.getElementById('loading-screen').style.display = 'none'; }
-async function init() {
-    const loadingText = document.querySelector('#loading-screen p');
-    loadingText.innerText = "正在發起連線...";
-    console.log("START INIT");
+        async function init() {
+            console.log("初始化開始...");
+            document.getElementById('loading-screen').style.display = 'flex';
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const data = await response.json();
+                members = data.f_members || [];
+                flowers = data.f_data || [];
+                competitions = data.f_comps || [];
+                renderFlowers(); renderMembers(); renderRecords();
+                console.log("資料加載成功");
+            } catch (e) {
+                console.error("載入出錯:", e);
+                alert("連線失敗，請檢查網址或權限。");
+            }
+            document.getElementById('loading-screen').style.display = 'none';
+        }
 
-    try {
-        const resp = await fetch(SCRIPT_URL);
-        loadingText.innerText = "已連線，正在解析資料...";
-        console.log("FETCH SUCCESS", resp.status);
-
-        const data = await resp.json();
-        console.log("DATA RECEIVED", data);
-        
-        members = data.f_members || [];
-        flowers = data.f_data || [];
-        competitions = data.f_comps || [];
-
-        renderFlowers();
-        renderMembers();
-        renderRecords();
-        
-        document.getElementById('loading-screen').style.display = 'none';
-    } catch (e) {
-        loadingText.innerHTML = `<b style="color:red">連線失敗：${e.message}</b>`;
-        console.error("FATAL ERROR", e);
-    }
-}
-async function loadData() {
-    try {
-        const resp = await fetch(SCRIPT_URL);
-        const data = await resp.json();
-        
-        // 解析後端傳回的 JSON 物件
-        if (data.f_members) members = data.f_members;
-        if (data.f_data) flowers = data.f_data;
-        if (data.f_comps) competitions = data.f_comps;
-
-        // 重新渲染所有頁面
-        renderFlowers(); // 這邊會執行你要求的一行三個 + 正方形
-        renderMembers();
-        renderRecords();
-        
-        console.log("資料加載完畢");
-    } catch (e) {
-        console.error("無法載入資料:", e);
-    }
-}
-        
-async function saveData() {
-    console.log("開始同步...");
-    const payload = {
-        action: 'updateAll', // 務必加上這行，後端才會執行儲存
-        f_members: members,
-        f_data: flowers,
-        f_comps: competitions
-    };
-
-    try {
-        await fetch(SCRIPT_URL, {
-            method: 'POST',
-            mode: 'no-cors', // 解決 Google Apps Script 跳轉問題
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(payload)
-        });
-        console.log("已送出同步請求");
-    } catch (e) {
-        console.error("儲存失敗:", e);
-    }
-}
+        async function saveData() {
+            const payload = { action: 'updateAll', f_members: members, f_data: flowers, f_comps: competitions };
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify(payload)
+                });
+                console.log("已送出同步請求");
+            } catch (e) { console.error("儲存失敗:", e); }
+        }
 
         function renderMembers() {
-            const query = (document.getElementById('member-search').value || "").toLowerCase();
+            const q = (document.getElementById('member-search').value || "").toLowerCase();
             const grid = document.getElementById('member-card-grid');
-            if (!grid) return;
-
-            const filtered = members.filter(m =>
-                m.name.toLowerCase().includes(query) ||
-                (m.gameId && m.gameId.toString().includes(query))
-            );
-
+            const filtered = members.filter(m => m.name.toLowerCase().includes(q) || (m.gameId && m.gameId.toString().includes(q)));
             grid.innerHTML = filtered.map(m => `
-        <div class="member-card" style="display:flex; justify-content:space-between; align-items:center;" onclick="showMemberCard('${m.id}')">
-            <div>
-                <strong>${m.name}</strong>
-                <div style="color:#888; font-size:12px;">ID: ${m.gameId || '-'}</div>
-            </div>
-            <div class="controls-area" onclick="event.stopPropagation();">
-                <button onclick="showAddMember('${m.id}')" style="background:#007bff; color:white; border:none; padding:6px 15px; border-radius:4px; cursor:pointer; font-size:13px; font-weight:bold;">修改花朵/資料</button>
-                
-                ${isAdmin ? `
-                <button onclick="deleteMember('${m.id}')" style="background:#d9534f; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px; margin-left:5px;">刪除</button>
-                ` : ''}
-            </div>
-        </div>
-    `).join('');
+                    <div class="member-card" onclick="showMemberCard('${m.id}')">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <strong>${m.name}</strong>
+                                <div style="color:#888; font-size:12px;">ID: ${m.gameId || '-'}</div>
+                            </div>
+                            <button onclick="event.stopPropagation(); showAddMember('${m.id}')" style="background:#007bff; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:12px;">編輯</button>
+                        </div>
+                    </div>`).join('');
         }
 
         function showMemberCard(id) {
             const m = members.find(x => x.id.toString() === id.toString());
-            if (!m) return;
-            const ownedArray = Array.isArray(m.ownedFlowers) ? m.ownedFlowers : (m.ownedFlowers ? m.ownedFlowers.split(',') : []);
+            const ownedArray = m.ownedFlowers || [];
             const flowerHTML = ownedArray.map(fid => {
                 const f = flowers.find(x => x.id.toString() === fid.toString());
-                return f ? `<span class="grade-${f.grade}" style="margin-right:8px; display:inline-block; margin-bottom:5px;">● ${f.name}</span>` : '';
+                return f ? `<span class="grade-${f.grade}">● ${f.name}</span> ` : '';
             }).join('');
-
-            document.getElementById('modal-body').innerHTML = `
-        <div style="text-align:center;">
-            <div style="font-size:24px; font-weight:bold;">${m.name}</div>
-            <div style="color:#888; margin-bottom:15px;">ID: ${m.gameId || '未設定'}</div>
-            <div style="text-align:left; background:#f9f9f9; padding:15px; border-radius:8px; border:1px solid #eee;">
-                <strong>目前擁有花朵：</strong><br>
-                <div style="margin-top:10px; line-height:1.6;">${flowerHTML || '<span style="color:#ccc;">尚無花朵資料</span>'}</div>
-            </div>
-            <button onclick="showAddMember('${m.id}')" style="width:100%; margin-top:20px; padding:12px; background:#333; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:bold;">進入修改頁面</button>
-        </div>`;
+            document.getElementById('modal-body').innerHTML = `<h2>${m.name}</h2><p>ID: ${m.gameId}</p><div>${flowerHTML}</div>`;
             document.getElementById('main-modal').style.display = 'flex';
         }
 
         function showAddMember(memberId = null) {
-            window.editingMemberId = memberId ? memberId.toString() : null;
+            window.editingMemberId = memberId;
             const m = memberId ? members.find(x => x.id.toString() === memberId.toString()) : { name: '', gameId: '', ownedFlowers: [] };
-
             document.getElementById('modal-body').innerHTML = `
-                    <h2>${memberId ? '編輯成員' : '新增成員'}</h2>
-                    <div class="form-group"><label>成員名稱</label><input type="text" id="m-name" value="${m.name}"></div>
-                    <div class="form-group"><label>遊戲 ID</label><input type="text" id="m-gameid" value="${m.gameId || ''}"></div>
-                    <div id="m-flower-list" style="max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-top:10px;">
-                        ${generateFlowerCheckboxes(m.ownedFlowers)}
+                    <h3>${memberId ? '編輯' : '新增'}成員</h3>
+                    <div class="form-group"><label>名稱</label><input type="text" id="m-name" value="${m.name}"></div>
+                    <div class="form-group"><label>遊戲ID</label><input type="text" id="m-gameid" value="${m.gameId}"></div>
+                    <div id="m-flower-list" style="max-height:200px; overflow-y:auto; border:1px solid #eee; padding:5px;">
+                        ${flowers.map(f => `<label style="display:block;"><input type="checkbox" name="m-flower-check" value="${f.id}" ${m.ownedFlowers.includes(f.id.toString()) ? 'checked' : ''}> ${f.name}</label>`).join('')}
                     </div>
-                    <button class="add-btn" style="width:100%; margin-top:20px;" onclick="saveMemberData()">儲存成員</button>
-                    ${memberId ? `<button onclick="deleteMember('${m.id}')" style="width:100%; margin-top:10px; background:#ff4d4d; color:white; border:none; padding:8px; border-radius:4px; cursor:pointer;">刪除成員</button>` : ''}
-                `;
+                    <button class="add-btn" style="width:100%; margin-top:10px;" onclick="saveMemberData()">儲存</button>`;
             document.getElementById('main-modal').style.display = 'flex';
         }
 
-        function generateFlowerCheckboxes(ownedIds = []) {
-            const ownedSet = new Set((ownedIds || []).map(id => id.toString()));
-            return flowers.map(f => `
-                    <label style="display:flex; align-items:center; margin-bottom:5px; cursor:pointer;">
-                        <input type="checkbox" name="m-flower-check" value="${f.id}" ${ownedSet.has(f.id.toString()) ? 'checked' : ''}>
-                        <span class="grade-${f.grade}" style="margin-left:8px;">${f.name}</span>
-                    </label>`).join('');
+        async function saveMemberData() {
+            const name = document.getElementById('m-name').value;
+            const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
+            const data = { id: window.editingMemberId || Date.now().toString(), name, gameId: document.getElementById('m-gameid').value, ownedFlowers: Array.from(checks).map(c => c.value) };
+            if (window.editingMemberId) members[members.findIndex(x => x.id.toString() === window.editingMemberId.toString())] = data; else members.push(data);
+            renderMembers(); closeModal(); await saveData();
         }
 
-async function saveMemberData() {
-    const name = document.getElementById('m-name').value;
-    const gameId = document.getElementById('m-gameid').value;
-    const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
-    const selectedFlowerIds = Array.from(checks).map(c => c.value);
-
-    if (!name) return alert('請輸入名稱');
-
-    const newMember = {
-        id: window.editingMemberId || Date.now().toString(),
-        name: name,
-        gameId: gameId,
-        ownedFlowers: selectedFlowerIds
-    };
-
-    // 更新本地陣列
-    if (window.editingMemberId) {
-        const idx = members.findIndex(m => m.id.toString() === window.editingMemberId.toString());
-        if (idx !== -1) members[idx] = newMember;
-    } else {
-        members.push(newMember);
-    }
-
-    renderMembers(); // 重新渲染畫面
-    closeModal();
-    
-    // 重要：呼叫同步函式傳回 Google Sheet
-    await saveData(); 
-}
-// 在 showAddFlower 彈窗 HTML 中加入：
-// <input type="file" id="f-image-input" accept="image/*" onchange="previewImage(event)">
-// <img id="image-preview" src="" style="width:100px; aspect-ratio:1/1; object-fit:cover; display:none;">
-
-function previewImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const preview = document.getElementById('image-preview');
-        preview.src = e.target.result;
-        preview.style.display = 'block';
-        // 將 base64 暫存，等待儲存時送往後端 uploadToDrive
-        window.tempImageData = e.target.result; 
-    };
-    reader.readAsDataURL(file);
-}
-        async function deleteMember(id) {
-            if (!confirm("確定要刪除此成員嗎？")) return;
-            members = members.filter(m => m.id.toString() !== id.toString());
-            closeModal(); renderMembers(); await saveData();
-        }
-
-        // 花朵管理
         function renderFlowers() {
             const q = document.getElementById('flower-search').value.toLowerCase();
             const grid = document.getElementById('flower-grid');
             grid.innerHTML = flowers.filter(f => f.name.toLowerCase().includes(q))
-                .sort((a, b) => (b.score || 0) - (a.score || 0))
                 .map(f => `<div class="flower-card" onclick="showFlowerDetail('${f.id}')"><img src="${f.image || 'https://via.placeholder.com/150'}"><div class="name grade-${f.grade}">${f.name}</div></div>`).join('');
         }
-        async function saveFlowerData() {
-    const name = document.getElementById('f-name').value;
-    if (!name) return alert("請輸入花朵名稱");
 
-    const newFlower = {
-        id: window.editingFlowerId || Date.now().toString(),
-        name: name,
-        grade: document.getElementById('f-grade').value,
-        score: document.getElementById('f-score').value,
-        // 如果有新上傳的照片(Base64)，就傳送給後端處理；否則保留舊連結
-        image: window.tempImageData || (window.editingFlowerId ? flowers.find(f => f.id == window.editingFlowerId).image : "")
-    };
+        function showFlowerDetail(id) {
+            const f = flowers.find(x => x.id.toString() === id.toString());
+            if (!f) return;
 
-    // 更新本地陣列
-    if (window.editingFlowerId) {
-        const idx = flowers.findIndex(f => f.id == window.editingFlowerId);
-        flowers[idx] = newFlower;
-    } else {
-        flowers.push(newFlower);
-    }
+            // --- 新增：搜尋擁有此花的人 ---
+            const owners = members.filter(m =>
+                m.ownedFlowers && m.ownedFlowers.map(String).includes(id.toString())
+            );
 
-    // 呼叫後端同步
-    await syncToGoogleSheet();
-    renderFlowers(); // 重新渲染「一行三個」畫面
-    closeModal();
-    window.tempImageData = null; // 清除暫存
-}
+            const ownerListHTML = owners.length > 0
+                ? owners.map(m => `<span style="background:#eee; padding:2px 8px; border-radius:10px; margin:2px; display:inline-block; font-size:12px;">${m.name}</span>`).join('')
+                : '<span style="color:#999; font-size:12px;">目前無人擁有</span>';
+            // ----------------------------
 
-
-async function syncToGoogleSheet() {
-    console.log("開始同步至 Google One...");
-    
-    // 必須與後端 readDataFromSheet / doPost 的 Key 完全一致
-    const payload = {
-        action: 'updateAll',
-        f_members: members,      // 對應後端 f_members
-        f_data: flowers,        // 對應後端 f_data
-        f_comps: competitions   // 對應後端 f_comps
-    };
-
-
-// 修改 showFlowerDetail 函式中的圖片樣式
-function showFlowerDetail(id) {
-    const f = flowers.find(x => x.id.toString() === id.toString());
-    const body = document.getElementById('modal-body');
-    const owners = members.filter(m => (m.ownedFlowers || []).map(oid => oid.toString()).includes(id.toString()))
-        .map(m => m.name).join('、');
-
-    body.innerHTML = `
+            document.getElementById('modal-body').innerHTML = `
         <div style="text-align:center;">
-            <h2 class="grade-${f.grade}" style="margin-top:0;">${f.name}</h2>
-            <img src="${f.image || ''}" style="width:100%; max-height:250px; object-fit:contain; border-radius:8px; margin-bottom:10px;">
-            <p><strong>品級：</strong><span class="grade-${f.grade}">${f.grade}</span> | <strong>分數：</strong>${f.score}</p>
-            <div style="text-align:left; background:#f8f9fa; padding:10px; border-radius:6px; margin-top:10px;">
-                <strong>擁有者：</strong><br><span style="color:#555; font-size:14px;">${owners || '目前無人擁有'}</span>
+            <h2 class="grade-${f.grade}">${f.name}</h2>
+            <img src="${f.image || 'https://via.placeholder.com/150'}" style="width:100%; border-radius:8px; margin-bottom:10px;">
+            <div style="background:#f9f9f9; padding:10px; border-radius:8px; text-align:left; margin-bottom:10px;">
+                <p><b>品級：</b><span class="grade-${f.grade}">${f.grade}</span></p>
+                <p><b>分數：</b>${f.score} 分</p>
+                <p><b>擁有者：</b></p>
+                <div style="margin-top:5px;">${ownerListHTML}</div>
             </div>
-            ${isAdmin ? `<button onclick="openFlowerModal('${f.id}')" style="width:100%; padding:10px; background:#007bff; color:white; border:none; margin-top:15px; border-radius:4px; cursor:pointer;">編輯花朵</button>` : ''}
-        </div>`;
-    document.getElementById('main-modal').style.display = 'flex';
-}
+            ${isAdmin ? `<button onclick="openFlowerModal('${f.id}')" style="margin-top:10px; padding:8px 16px;">編輯花朵</button>` : ''}
+        </div>
+    `;
+            document.getElementById('main-modal').style.display = 'flex';
+        }
 
         function openFlowerModal(editId = null) {
             const f = editId ? flowers.find(x => x.id.toString() === editId.toString()) : null;
-            document.getElementById('modal-body').innerHTML = `
-                    <h2>${f ? '編輯' : '新增'}花朵</h2>
-                    <div class="form-group"><label>花名</label><input type="text" id="f-name" value="${f ? f.name : ''}"></div>
-                    <div class="form-group"><label>分數</label><input type="number" id="f-score" value="${f ? f.score : ''}"></div>
-                    <div class="form-group"><label>品級</label><select id="f-grade">
-                        <option value="仙品" ${f?.grade == '仙品' ? 'selected' : ''}>仙品</option>
-                        <option value="華品" ${f?.grade == '華品' ? 'selected' : ''}>華品</option>
-                        <option value="珍品" ${f?.grade == '珍品' ? 'selected' : ''}>珍品</option>
-                        <option value="普品" ${f?.grade == '普品' ? 'selected' : ''}>普品</option>
-                        <option value="凡品" ${f?.grade == '凡品' ? 'selected' : ''}>凡品</option>
-                    </select></div>
-                    <div class="form-group"><label>照片</label><input type="file" id="f-img" accept="image/*"></div>
-                    <button class="add-btn" style="width:100%" onclick="saveFlower(${editId ? `'${editId}'` : 'null'})">儲存</button>`;
+            document.getElementById('modal-body').innerHTML = `<h3>花朵設定</h3><div class="form-group"><label>名稱</label><input type="text" id="f-name" value="${f ? f.name : ''}"></div><div class="form-group"><label>分數</label><input type="number" id="f-score" value="${f ? f.score : ''}"></div><div class="form-group"><label>品級</label><select id="f-grade"><option value="仙品">仙品</option><option value="華品">華品</option><option value="珍品">珍品</option><option value="普品">普品</option><option value="凡品">凡品</option></select></div><div class="form-group"><label>照片</label><input type="file" id="f-img" accept="image/*"></div><button class="add-btn" onclick="saveFlower('${editId}')">儲存</button>`;
+            if (f) document.getElementById('f-grade').value = f.grade;
             document.getElementById('main-modal').style.display = 'flex';
         }
 
         async function saveFlower(editId) {
-            const name = document.getElementById('f-name').value;
             const file = document.getElementById('f-img').files[0];
-            let imgData = editId ? flowers.find(x => x.id.toString() === editId.toString()).image : "";
+            let imgData = editId !== 'null' ? flowers.find(x => x.id.toString() === editId).image : "";
             if (file) {
                 const reader = new FileReader();
                 imgData = await new Promise(r => { reader.onload = e => r(e.target.result); reader.readAsDataURL(file); });
             }
-            const data = { id: editId || Date.now().toString(), name, grade: document.getElementById('f-grade').value, score: document.getElementById('f-score').value, image: imgData };
-            if (editId) flowers[flowers.findIndex(x => x.id.toString() === editId.toString())] = data; else flowers.push(data);
-            closeModal(); renderFlowers(); await saveData();
+            const data = { id: editId !== 'null' ? editId : Date.now().toString(), name: document.getElementById('f-name').value, grade: document.getElementById('f-grade').value, score: document.getElementById('f-score').value, image: imgData };
+            if (editId !== 'null') flowers[flowers.findIndex(x => x.id.toString() === editId)] = data; else flowers.push(data);
+            renderFlowers(); closeModal(); await saveData();
         }
 
-        // 競賽紀錄
+        function renderRecords() {
+            const nameQ = document.getElementById('r-search-name').value.toLowerCase();
+            const flowerQ = document.getElementById('r-search-flower').value.toLowerCase();
+            const body = document.getElementById('r-list-body');
+            const filtered = competitions.filter(r => (r.memberName || "").toLowerCase().includes(nameQ) && (r.flowerNames || "").toLowerCase().includes(flowerQ));
+            body.innerHTML = filtered.map(r => `<tr><td>${r.memberName}</td><td>${r.flowerNames}</td><td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td><td><button onclick="editRecord('${r.id}')">改</button></td></tr>`).join('');
+        }
+
         function showAddRecord() {
             const sel = document.getElementById('r-member-select');
-            sel.innerHTML = '<option value="">-- 請選擇成員 --</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-            document.getElementById('r-flower-pick-area').innerHTML = '請先選擇成員...';
+            sel.innerHTML = '<option value="">-- 請選擇 --</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
             document.getElementById('record-modal').style.display = 'flex';
         }
 
-        function loadMemberFlowersForRecord(preSelectedNames = []) {
+        function loadMemberFlowersForRecord(preSelected = []) {
             const mid = document.getElementById('r-member-select').value;
             const area = document.getElementById('r-flower-pick-area');
-            if (!mid) { area.innerHTML = '請先選擇成員...'; return; }
-
             const m = members.find(x => x.id.toString() === mid.toString());
-            const ownedIds = m.ownedFlowers || [];
-
-            if (ownedIds.length === 0) {
-                area.innerHTML = '<span style="color:red;">該成員名下無任何花朵資料，請先去成員頁面新增。</span>';
-                return;
-            }
-
-            area.innerHTML = ownedIds.map(fid => {
+            if (!m) return;
+            area.innerHTML = (m.ownedFlowers || []).map(fid => {
                 const f = flowers.find(x => x.id.toString() === fid.toString());
-                if (!f) return '';
-                // 判斷這朵花是否在原本的紀錄中
-                const isChecked = preSelectedNames.includes(f.name) ? 'checked' : '';
-                return `
-            <label style="display:block; padding:5px 0; border-bottom:1px solid #eee; cursor:pointer;">
-                <input type="checkbox" name="r-flower-check" value="${f.grade}" data-fname="${f.name}" ${isChecked}> 
-                <span class="grade-${f.grade}">${f.name}</span>
-            </label>`;
+                return f ? `<label style="display:block;"><input type="checkbox" name="r-flower-check" value="${f.grade}" data-fname="${f.name}" ${preSelected.includes(f.name) ? 'checked' : ''}> ${f.name}</label>` : '';
             }).join('');
         }
 
         async function saveRecord() {
             const mid = document.getElementById('r-member-select').value;
             const checks = document.querySelectorAll('input[name="r-flower-check"]:checked');
-            if (!mid || checks.length === 0) return alert('請選擇成員與花朵');
-
-            const m = members.find(x => x.id.toString() === mid.toString());
-            const selectedFlowerNames = Array.from(checks).map(c => c.getAttribute('data-fname'));
+            const m = members.find(x => x.id.toString() === mid);
+            const names = Array.from(checks).map(c => c.getAttribute('data-fname'));
             const grades = Array.from(checks).map(c => c.value);
-
-            const gradeOrder = { "仙品": 1, "華品": 2, "珍品": 3, "普品": 4, "凡品": 5 };
-            const maxGrade = grades.reduce((a, b) => gradeOrder[a] < gradeOrder[b] ? a : b);
-
-            const recordData = {
-                id: window.editingRecordId || Date.now().toString(),
-                memberId: m.id,
-                memberName: m.name,
-                maxGrade,
-                flowerNames: selectedFlowerNames.join(', ')
-            };
-
-            if (window.editingRecordId) {
-                const idx = competitions.findIndex(r => r.id.toString() === window.editingRecordId.toString());
-                if (idx !== -1) competitions[idx] = recordData;
-            } else {
-                competitions.push(recordData);
-            }
-
-            renderRecords();
-            closeRecordModal();
-            window.editingRecordId = null; // 清空狀態
-            await saveData();
+            const order = { "仙品": 1, "華品": 2, "珍品": 3, "普品": 4, "凡品": 5 };
+            const max = grades.reduce((a, b) => order[a] < order[b] ? a : b, "凡品");
+            const data = { id: window.editingRecordId || Date.now().toString(), memberId: mid, memberName: m.name, maxGrade: max, flowerNames: names.join(', ') };
+            if (window.editingRecordId) competitions[competitions.findIndex(x => x.id.toString() === window.editingRecordId)] = data; else competitions.push(data);
+            renderRecords(); closeRecordModal(); await saveData();
         }
 
-function renderRecords() {
-    const nameQ = document.getElementById('r-search-name').value.toLowerCase();
-    const flowerQ = document.getElementById('r-search-flower').value.toLowerCase(); // 搜尋花朵框
-    const body = document.getElementById('r-list-body');
-
-    const filtered = competitions.filter(r => 
-        r.memberName.toLowerCase().includes(nameQ) && 
-        (r.flowerNames || "").toLowerCase().includes(flowerQ)
-    );
-
-body.innerHTML = filtered.map(r => `
-    <tr>
-        <td>${r.memberName}</td>
-        <td style="font-size:11px;">${r.flowerNames}</td>
-        <td><span class="grade-${r.maxGrade}" style="font-weight:bold;">${r.maxGrade}</span></td>
-        <td>
-            <button onclick="editRecord('${r.id}')" style="padding:2px 5px;">改</button>
-            ${isAdmin ? `<button onclick="deleteRecord('${r.id}')" style="padding:2px 5px; background:#d9534f; color:white; border:none; border-radius:3px;">刪</button>` : ''}
-        </td>
-    </tr>
-`).join('');
-}
         function editRecord(id) {
-            window.editingRecordId = id.toString();
+            window.editingRecordId = id;
             const r = competitions.find(x => x.id.toString() === id.toString());
-            if (!r) return;
-
-            // 設定下拉選單選中該成員
-            const sel = document.getElementById('r-member-select');
-            sel.innerHTML = '<option value="">-- 請選擇成員 --</option>' + members.map(m => `<option value="${m.id}" ${m.id.toString() === r.memberId.toString() ? 'selected' : ''}>${m.name}</option>`).join('');
-
-            // 觸發加載該成員的花朵，並勾選原本紀錄的花朵
+            document.getElementById('r-member-select').value = r.memberId;
             loadMemberFlowersForRecord(r.flowerNames.split(', '));
-
             document.getElementById('record-modal').style.display = 'flex';
         }
+
         function showPage(p) {
             document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
             document.getElementById('page-' + p).classList.add('active');
             document.getElementById('btn-' + p).classList.add('active');
         }
-
         function closeModal() { document.getElementById('main-modal').style.display = 'none'; }
         function closeRecordModal() { document.getElementById('record-modal').style.display = 'none'; }
         function openLoginModal() {
             if (isAdmin) { isAdmin = false; updateAdminUI(); return; }
-            if (prompt("帳號") == '12345' && prompt("密碼") == '45678') { isAdmin = true; updateAdminUI(); }
+            const p = prompt("密碼"); if (p == '45678') { isAdmin = true; updateAdminUI(); }
         }
         function updateAdminUI() {
             document.getElementById('admin-tag').style.display = isAdmin ? 'inline-block' : 'none';
@@ -818,14 +570,7 @@ body.innerHTML = filtered.map(r => `
             renderMembers(); renderFlowers();
         }
 
-        init();
+        init(); // 啟動
     </script>
 </body>
-
 </html>
-
-
-
-
-
-
