@@ -388,7 +388,7 @@
     </div>
 
     <script>
-        const API_URL = "https://script.google.com/macros/s/AKfycbwbzT1SfRLaXCgEFJcpGBGTGJtCN_iH0Q9SimVRXcAgsSxWYoUXu7EgTtr1IaENBfho/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbzT1SfRLaXCgEFJcpGBGTGJtCN_iH0Q9SimVRXcAgsSxWYoUXu7EgTtr1IaENBfho/exec";
 
         let members = [];
         let flowers = [];
@@ -401,20 +401,21 @@
 async function init() {
     document.getElementById('loading-screen').style.display = 'flex';
     try {
-        // 從後端 API 取得所有資料 (包含花朵、成員、競賽紀錄)
-        const response = await fetch(API_URL);
+        const response = await fetch(SCRIPT_URL);
         const data = await response.json();
         
-        flowers = data.flowers || [];
-        members = data.members || [];
-        competitions = data.competitions || [];
+        // 必須對應後端 return 的 Key 名稱
+        members = data.f_members || [];
+        flowers = data.f_data || [];
+        competitions = data.f_comps || [];
 
         renderFlowers();
         renderMembers();
         renderRecords();
+        console.log("雲端資料加載成功");
     } catch (e) {
         console.error("資料載入失敗:", e);
-        alert("無法連線至後端資料庫，請檢查網路或 API 設定");
+        alert("無法連線至雲端，請檢查網址是否正確或稍後再試");
     }
     document.getElementById('loading-screen').style.display = 'none';
 }
@@ -440,23 +441,27 @@ async function loadData() {
 }
         
 async function saveData() {
-    try {
-        const payload = {
-            flowers: flowers,
-            members: members,
-            competitions: competitions
-        };
+    console.log("開始同步至雲端...");
+    const payload = {
+        action: 'updateAll',
+        f_members: members,
+        f_data: flowers,
+        f_comps: competitions
+    };
 
-        // 透過 POST 傳送完整資料回後端
-        await fetch(API_URL, {
+    try {
+        const response = await fetch(SCRIPT_URL, {
             method: 'POST',
+            mode: 'no-cors', // 解決 Google 重定向導致的 CORS 報錯
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(payload)
         });
         
-        console.log("資料已同步至雲端");
+        // 因為 no-cors 模式無法讀取回傳值，我們假設成功或設定延遲提示
+        console.log("同步請求已發送");
+        // alert("同步中，請稍候..."); 
     } catch (e) {
         console.error("儲存失敗:", e);
-        alert("同步至雲端失敗，請稍後再試");
     }
 }
 
@@ -835,11 +840,12 @@ function renderRecords() {
             renderMembers(); renderFlowers();
         }
 
-        window.onload = loadDataFromDB;
+        window.onload = init;
     </script>
 </body>
 
 </html>
+
 
 
 
