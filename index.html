@@ -131,14 +131,14 @@
             font-weight: bold;
         }
 
-        .flower-grid, .member-grid {
+        .member-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr); /* 強制一行三個 */
             gap: 8px; /* 縮小間距以適應手機 */
             margin-top: 10px;
         }
 
-        .flower-card, .member-card {
+        .member-card {
             padding: 6px;
             font-size: 18px; /* 縮小字體 */
             display: flex;
@@ -148,17 +148,46 @@
             min-width: 0; /* 防止內容撐開 */
         }
 
-            .flower-card img {
-                height: 60px; /* 手機上圖片高度調小 */
-                width: 100%;
-                object-fit: cover;
-            }
+/* 花朵清單網格：強制三欄 */
+.flower-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 強制一行三個 */
+    gap: 8px; /* 縮小間距適應手機 */
+    margin-top: 10px;
+}
 
-            .flower-card .name {
-                font-size: 13px;
-                margin-top: 5px;
-                font-weight: bold;
-            }
+/* 花朵卡片：方形照片關鍵 */
+.flower-card {
+    background: var(--card-bg);
+    padding: 5px; /* 縮小內距 */
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 實作正方形照片 */
+.flower-card img {
+    width: 100%; /* 寬度填滿卡片 */
+    aspect-ratio: 1 / 1; /* 關鍵：強制寬高比 1:1 (正方形) */
+    object-fit: cover; /* 關鍵：圖片自動裁切填滿方形，不變形 */
+    border-radius: 4px; /* 方形也要加點圓角 */
+}
+
+/* 花名樣式：防止擠爆方形卡片 */
+.flower-card .name {
+    font-size: 13px; /* 字體縮小，適合三欄排版 */
+    margin-top: 4px;
+    font-weight: bold;
+    width: 100%;
+    /* 防止長花名撐開卡片 */
+    overflow: hidden; 
+    text-overflow: ellipsis; /* 多出的字變 ... */
+    white-space: nowrap; /* 不換行 */
+}
 
         .grade-仙品 {
             color: var(--red);
@@ -500,19 +529,25 @@
                 .map(f => `<div class="flower-card" onclick="showFlowerDetail('${f.id}')"><img src="${f.image || 'https://via.placeholder.com/150'}"><div class="name grade-${f.grade}">${f.name}</div></div>`).join('');
         }
 
-        function showFlowerDetail(id) {
-            const f = flowers.find(x => x.id.toString() === id.toString());
-            const owners = members.filter(m => (m.ownedFlowers || []).map(oid => oid.toString()).includes(id.toString())).map(m => m.name).join('、');
-            document.getElementById('modal-body').innerHTML = `
-                    <div style="text-align:center;">
-                        <h2 class="grade-${f.grade}">${f.name}</h2>
-                        <img src="${f.image || ''}" style="width:100%; max-height:200px; object-fit:contain;">
-                        <p>品級：${f.grade} | 分數：${f.score}</p>
-                        <div style="text-align:left; background:#eee; padding:10px;">擁有者：${owners || '無'}</div>
-                        ${isAdmin ? `<button onclick="openFlowerModal('${f.id}')" style="width:100%; margin-top:10px; padding:10px; background:#007bff; color:white; border:none; border-radius:4px;">編輯</button>` : ''}
-                    </div>`;
-            document.getElementById('main-modal').style.display = 'flex';
-        }
+// 修改 showFlowerDetail 函式中的圖片樣式
+function showFlowerDetail(id) {
+    const f = flowers.find(x => x.id.toString() === id.toString());
+    const body = document.getElementById('modal-body');
+    const owners = members.filter(m => (m.ownedFlowers || []).map(oid => oid.toString()).includes(id.toString()))
+        .map(m => m.name).join('、');
+
+    body.innerHTML = `
+        <div style="text-align:center;">
+            <h2 class="grade-${f.grade}" style="margin-top:0;">${f.name}</h2>
+            <img src="${f.image || ''}" style="width:100%; max-height:250px; object-fit:contain; border-radius:8px; margin-bottom:10px;">
+            <p><strong>品級：</strong><span class="grade-${f.grade}">${f.grade}</span> | <strong>分數：</strong>${f.score}</p>
+            <div style="text-align:left; background:#f8f9fa; padding:10px; border-radius:6px; margin-top:10px;">
+                <strong>擁有者：</strong><br><span style="color:#555; font-size:14px;">${owners || '目前無人擁有'}</span>
+            </div>
+            ${isAdmin ? `<button onclick="openFlowerModal('${f.id}')" style="width:100%; padding:10px; background:#007bff; color:white; border:none; margin-top:15px; border-radius:4px; cursor:pointer;">編輯花朵</button>` : ''}
+        </div>`;
+    document.getElementById('main-modal').style.display = 'flex';
+}
 
         function openFlowerModal(editId = null) {
             const f = editId ? flowers.find(x => x.id.toString() === editId.toString()) : null;
@@ -678,4 +713,5 @@
         window.onload = loadDataFromDB;
     </script>
 </body>
+
 </html>
