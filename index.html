@@ -388,50 +388,40 @@
             document.getElementById('loading-screen').style.display = 'none';
         }
 
-        async function saveData(bypass = false) {
-            if (!isAdmin && !bypass) {
-                console.warn("非管理員身分，取消儲存");
-                return;
-            }
+async function saveData(bypass = false) {
+    if (!isAdmin && !bypass) return;
 
-            console.log("正在同步至雲端，請勿關閉視窗...");
-            document.getElementById('loading-screen').style.display = 'flex';
+    document.getElementById('loading-screen').style.display = 'flex';
+    const loadingText = document.querySelector('#loading-screen p');
+    loadingText.innerText = "正在同步競賽紀錄至雲端...";
 
-            // 讓畫面提示使用者正在上傳
-            const loadingText = document.querySelector('#loading-screen p');
-            loadingText.innerText = "圖片上傳中，可能需要數秒至半分鐘，請稍候...";
+    const payload = {
+        action: 'updateAll',
+        f_members: members,
+        f_data: flowers,
+        f_comps: f_comps // 👈 確保這行存在
+    };
 
-            const payload = {
-                action: 'updateAll',
-                f_members: members,
-                f_data: flowers,
-                f_comps: competitions
-            };
+    try {
+        await fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // GAS 跨網域必須使用 no-cors
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
+        });
 
-            try {
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(payload)
-                });
-
-                console.log("上傳指令發送完畢！準備刷新網址...");
-                loadingText.innerText = "正在向雲端索取最新圖庫...";
-
-                // 💡 關鍵修復點：稍微等待 1.5 秒，確保 Google 試算表已經寫入完畢
-                await new Promise(resolve => setTimeout(resolve, 1500));
-
-                // 💡 強制重新讀取！這會把網頁裡「巨大的圖片代碼」洗掉，換成「短短的 Google 網址」
-                await init();
-
-                alert("圖片與資料同步成功！");
-            } catch (e) {
-                console.error("同步出錯:", e);
-                alert("同步失敗！請檢查網路。");
-                document.getElementById('loading-screen').style.display = 'none';
-            }
-        }
+        // 稍微延遲後重新初始化，確保抓到的是雲端最新資料
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await init(); 
+        
+        alert("所有資料（含競賽紀錄）同步成功！");
+    } catch (e) {
+        console.error("同步失敗:", e);
+        alert("同步失敗，請檢查網路連接。");
+    } finally {
+        document.getElementById('loading-screen').style.display = 'none';
+    }
+}
         const GRADE_ORDER = { '仙品': 1, '華品': 2, '珍品': 3, '普品': 4, '凡品': 5 };
         // 刪除原本重複的 GRADE_WEIGHT，統一使用 GRADE_ORDER
 function renderMembers() {
@@ -884,6 +874,7 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
 
