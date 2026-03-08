@@ -343,25 +343,32 @@
         </div>
     </div>
 
-    <div id="record-modal" class="modal" onclick="closeRecordModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-btn" onclick="closeRecordModal()">&times;</span>
-            <h3>競賽紀錄資料</h3>
-            <div class="form-group">
-                <label>選擇成員</label>
-                <select id="r-member-select" onchange="loadMemberFlowersForRecord()" style="width:100%;">
-                    <option value="">-- 請選擇成員 --</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>勾選本次參賽花朵</label>
-                <div id="r-flower-pick-area" style="max-height:250px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:4px;">
-                    請先選擇成員...
-                </div>
-            </div>
-            <button class="add-btn" onclick="saveRecord()" style="width:100%; margin-top:10px;">儲存紀錄</button>
+<div id="record-modal" class="modal" onclick="closeRecordModal()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <span class="close-btn" onclick="closeRecordModal()">&times;</span>
+        <h3>競賽紀錄資料</h3>
+        
+        <div class="form-group">
+            <label>選擇成員</label>
+            <select id="r-member-select" onchange="loadMemberFlowersForRecord()" style="width:100%;">
+                <option value="">-- 請選擇成員 --</option>
+            </select>
         </div>
+
+        <div class="form-group">
+            <label>勾選本次參賽花朵</label>
+            <input type="text" id="r-flower-search" placeholder="🔍 輸入關鍵字快速過濾..." 
+                   style="width:100%; margin-bottom:10px; font-size:13px; box-sizing: border-box; padding: 8px;" 
+                   oninput="filterMemberFlowersForRecord()">
+            
+            <div id="r-flower-pick-area" style="max-height:250px; overflow-y:auto; border:1px solid #ddd; padding:10px; border-radius:4px; background: #fff;">
+                請先選擇成員...
+            </div>
+        </div>
+
+        <button class="add-btn" onclick="saveRecord()" style="width:100%; margin-top:10px;">儲存紀錄</button>
     </div>
+</div>
 
     <script>
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwRT5D4-LQBjocV9ps9Ey2SiI89spFIJhBWQLbGrKK5ecb-wf6bqa-rwcVRz81BOyga/exec";
@@ -696,14 +703,16 @@ async function saveMember() {
             });
         }
 
+// --- 修改後的競賽紀錄顯示功能 (僅保留刪除按鈕) ---
 function renderRecords() {
-    const nameQ = document.getElementById('r-search-name').value.toLowerCase();
-    const flowerQ = document.getElementById('r-search-flower').value.toLowerCase();
+    const nQ = document.getElementById('r-search-name').value.toLowerCase();
+    const fQ = document.getElementById('r-search-flower').value.toLowerCase();
     const body = document.getElementById('r-list-body');
     
+    // 過濾搜尋結果
     const filtered = competitions.filter(r => 
-        (r.memberName || "").toLowerCase().includes(nameQ) && 
-        (r.flowerNames || "").toLowerCase().includes(flowerQ)
+        (r.memberName || "").toLowerCase().includes(nQ) && 
+        (r.flowerNames || "").toLowerCase().includes(fQ)
     );
 
     body.innerHTML = filtered.map(r => `
@@ -712,8 +721,7 @@ function renderRecords() {
             <td><small>${r.flowerNames}</small></td>
             <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
             <td>
-                <button onclick="editRecord('${r.id}')" style="padding:2px 5px; cursor:pointer;">改</button>
-                <button onclick="deleteRecord('${r.id}')" style="background:#d9534f; color:white; border:none; padding:2px 5px; margin-left:5px; border-radius:3px; cursor:pointer;">刪</button>
+                <button onclick="deleteRecord('${r.id}')" style="background:#d9534f; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:12px;">刪除</button>
             </td>
         </tr>
     `).join('');
@@ -739,32 +747,58 @@ function showAddRecord() {
     document.getElementById('r-flower-pick-area').innerHTML = '請先選擇成員...';
     document.getElementById('record-modal').style.display = 'flex';
 }
+function loadMemberFlowersForRecord(preSelected = []) {
+    const mid = document.getElementById('r-member-select').value;
+    const area = document.getElementById('r-flower-pick-area');
+    const searchInput = document.getElementById('r-flower-search');
+    
+    // 重設搜尋框
+    if(searchInput) searchInput.value = "";
+    
+    const m = members.find(x => x.id.toString() === mid.toString());
+    if(!m || !m.ownedFlowers || m.ownedFlowers.length === 0) {
+        return area.innerHTML = '<span style="color:#888;">此成員尚無花朵資料。</span>';
+    }
 
-        function loadMemberFlowersForRecord(preSelectedNames = []) {
-            const mid = document.getElementById('r-member-select').value;
-            const area = document.getElementById('r-flower-pick-area');
-            const m = members.find(x => x.id.toString() === mid.toString());
+    // 將已選取的資料暫存，方便過濾時保留勾選狀態
+    window.currentRecordPreSelected = preSelected;
+    
+    filterMemberFlowersForRecord(); // 執行初次渲染
+}
+        function filterMemberFlowersForRecord() {
+    const mid = document.getElementById('r-member-select').value;
+    const term = document.getElementById('r-flower-search').value.toLowerCase();
+    const area = document.getElementById('r-flower-pick-area');
+    const m = members.find(x => x.id.toString() === mid.toString());
+    
+    if(!m) return;
 
-            if (!m || !m.ownedFlowers || m.ownedFlowers.length === 0) {
-                area.innerHTML = '<p style="color:#999; font-size:13px;">該成員目前沒有登記任何花朵。</p>';
-                return;
-            }
+    // 取得目前已經被勾選的花名 (避免搜尋過濾時，原本勾選的消失)
+    const currentlyChecked = Array.from(document.querySelectorAll('input[name="r-flower-check"]:checked'))
+                                  .map(c => c.getAttribute('data-fname'));
+    
+    // 合併原本傳入的已選取資料與目前勾選的資料
+    const allChecked = [...new Set([...(window.currentRecordPreSelected || []), ...currentlyChecked])];
 
-            area.innerHTML = m.ownedFlowers.map(fid => {
-                const f = flowers.find(x => x.id.toString() === fid.toString());
-                if (!f) return '';
+    const html = m.ownedFlowers.map(fid => {
+        const f = flowers.find(x => x.id.toString() === fid.toString());
+        if(!f) return '';
+        
+        // 檢查是否符合搜尋關鍵字
+        const isVisible = f.name.toLowerCase().includes(term) || f.grade.includes(term);
+        if(!isVisible) return '';
 
-                // 這裡維持用名稱比對 preSelectedNames 是為了相容你現有的紀錄格式
-                const isChecked = preSelectedNames.includes(f.name) ? 'checked' : '';
-
-                return `
-            <label style="display:block; padding:5px 0; border-bottom:1px solid #f9f9f9; cursor:pointer;">
+        const isChecked = allChecked.includes(f.name) ? 'checked' : '';
+        
+        return `
+            <label style="display:block; padding:5px; border-bottom:1px solid #eee; cursor:pointer;">
                 <input type="checkbox" name="r-flower-check" value="${f.grade}" data-fname="${f.name}" ${isChecked}> 
                 <span class="grade-${f.grade}">[${f.grade}]</span> ${f.name}
-            </label>
-        `;
-            }).join('');
-        }
+            </label>`;
+    }).join('');
+
+    area.innerHTML = html || '<span style="color:#888;">找不到符合條件的花朵。</span>';
+}
 
 async function saveRecord() {
     const mid = document.getElementById('r-member-select').value;
@@ -864,6 +898,7 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
 
