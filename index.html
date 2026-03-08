@@ -389,36 +389,41 @@
         }
 
 async function saveData(bypass = false) {
-    if (!isAdmin && !bypass) return;
+    // 允許管理員，或者是有傳入 bypass 參數的操作進行同步
+    if (!isAdmin && !bypass) {
+        console.log("非管理員且未授權同步，操作僅在本地生效");
+        return;
+    }
 
     document.getElementById('loading-screen').style.display = 'flex';
     const loadingText = document.querySelector('#loading-screen p');
-    loadingText.innerText = "正在同步競賽紀錄至雲端...";
+    loadingText.innerText = "正在同步資料至雲端...";
 
-    // 關鍵修正處：要把變數 competitions 賦值給 f_comps
+    // 關鍵修正：變數名稱必須對應 competitions
     const payload = {
         action: 'updateAll',
         f_members: members,
         f_data: flowers,
-        f_comps: competitions  // 👈 原本你寫 f_comps: f_comps，但變數名稱應為 competitions
+        f_comps: competitions 
     };
 
     try {
-        const response = await fetch(SCRIPT_URL, {
+        // 使用 POST 將資料送往 Google Apps Script
+        await fetch(SCRIPT_URL, {
             method: 'POST',
-            // 注意：如果你需要確認後端是否有收到，建議暫時拿掉 mode: 'no-cors' 
-            // 但 GAS 通常配合 no-cors 使用，所以重點在於 body 的內容
-            body: JSON.stringify(payload) 
+            mode: 'no-cors', 
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify(payload)
         });
 
-        // 稍微延遲後重新初始化，確保抓到的是雲端最新資料
+        // 延遲一下讓雲端處理資料
         await new Promise(resolve => setTimeout(resolve, 2000));
         await init(); 
         
-        alert("所有資料（含競賽紀錄）同步成功！");
+        alert("資料同步成功！");
     } catch (e) {
         console.error("同步失敗:", e);
-        alert("同步失敗，請檢查網路連接。");
+        alert("同步失敗，請檢查網路。");
     } finally {
         document.getElementById('loading-screen').style.display = 'none';
     }
@@ -798,14 +803,20 @@ async function saveRecord() {
     };
 
     // 檢查是「更新舊紀錄」還是「新增新紀錄」
-    if (window.editingRecordId) {
+if (window.editingRecordId) {
         const idx = competitions.findIndex(x => x.id.toString() === window.editingRecordId.toString());
-        if (idx !== -1) {
-            competitions[idx] = data;
-        }
+        if (idx !== -1) competitions[idx] = data;
     } else {
-        competitions.push(data); // 這裡才會增加新的人
+        competitions.push(data);
     }
+
+    renderRecords();
+    closeRecordModal();
+    window.editingRecordId = null; 
+    
+    // 關鍵修正：傳入 true，讓普通成員也能同步這筆紀錄
+    await saveData(true); 
+}
 
     renderRecords();
     closeRecordModal();
@@ -875,6 +886,7 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
 
