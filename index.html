@@ -389,17 +389,14 @@
         }
 
 async function saveData(bypass = false) {
-    // 讓普通成員也能同步，只要呼叫 saveData(true) 即可
-    if (!isAdmin && !bypass) return; 
-
+    // 既然要全開放，我們讓此處永遠通過
     document.getElementById('loading-screen').style.display = 'flex';
     
-    // 修正點：將右邊的 f_comps 改成 competitions
     const payload = {
         action: 'updateAll',
         f_members: members,
         f_data: flowers,
-        f_comps: competitions // 👈 這裡原本寫錯了，一定要改回 competitions
+        f_comps: competitions 
     };
 
     try {
@@ -409,15 +406,10 @@ async function saveData(bypass = false) {
             headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(payload)
         });
-
-        // 給 Google 點時間處理資料
-        await new Promise(resolve => setTimeout(resolve, 2500));
-        
-        // 重新載入最新資料確保同步成功
-        await init(); 
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await init(); // 重新讀取確保資料一致
         alert("同步成功！");
     } catch (e) {
-        console.error("同步出錯:", e);
         alert("同步失敗，請檢查網路。");
     } finally {
         document.getElementById('loading-screen').style.display = 'none';
@@ -720,8 +712,8 @@ function renderRecords() {
             <td><small>${r.flowerNames}</small></td>
             <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
             <td>
-                <button onclick="editRecord('${r.id}')" style="padding:2px 5px;">改</button>
-                ${isAdmin ? `<button onclick="deleteRecord('${r.id}')" style="background:#d9534f; color:white; border:none; padding:2px 5px; margin-left:5px; border-radius:3px; cursor:pointer;">刪</button>` : ''}
+                <button onclick="editRecord('${r.id}')" style="padding:2px 5px; cursor:pointer;">改</button>
+                <button onclick="deleteRecord('${r.id}')" style="background:#d9534f; color:white; border:none; padding:2px 5px; margin-left:5px; border-radius:3px; cursor:pointer;">刪</button>
             </td>
         </tr>
     `).join('');
@@ -872,6 +864,7 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
 
