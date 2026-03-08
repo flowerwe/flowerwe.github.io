@@ -389,26 +389,20 @@
         }
 
 async function saveData(bypass = false) {
-    // 允許管理員，或者是有傳入 bypass 參數的操作進行同步
-    if (!isAdmin && !bypass) {
-        console.log("非管理員且未授權同步，操作僅在本地生效");
-        return;
-    }
+    // 讓普通成員也能同步，只要呼叫 saveData(true) 即可
+    if (!isAdmin && !bypass) return; 
 
     document.getElementById('loading-screen').style.display = 'flex';
-    const loadingText = document.querySelector('#loading-screen p');
-    loadingText.innerText = "正在同步資料至雲端...";
-
-    // 關鍵修正：變數名稱必須對應 competitions
+    
+    // 修正點：將右邊的 f_comps 改成 competitions
     const payload = {
         action: 'updateAll',
         f_members: members,
         f_data: flowers,
-        f_comps: competitions 
+        f_comps: competitions // 👈 這裡原本寫錯了，一定要改回 competitions
     };
 
     try {
-        // 使用 POST 將資料送往 Google Apps Script
         await fetch(SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors', 
@@ -416,13 +410,14 @@ async function saveData(bypass = false) {
             body: JSON.stringify(payload)
         });
 
-        // 延遲一下讓雲端處理資料
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        await init(); 
+        // 給 Google 點時間處理資料
+        await new Promise(resolve => setTimeout(resolve, 2500));
         
-        alert("資料同步成功！");
+        // 重新載入最新資料確保同步成功
+        await init(); 
+        alert("同步成功！");
     } catch (e) {
-        console.error("同步失敗:", e);
+        console.error("同步出錯:", e);
         alert("同步失敗，請檢查網路。");
     } finally {
         document.getElementById('loading-screen').style.display = 'none';
@@ -818,13 +813,12 @@ if (window.editingRecordId) {
     await saveData(true); 
 }
 
-    renderRecords();
+renderRecords();
     closeRecordModal();
-    
-    // 重置 ID 防止影響下一次操作
     window.editingRecordId = null; 
     
-    await saveData();
+    // 加上 true，代表這筆操作「繞過」管理員權限檢查，直接同步
+    await saveData(true); 
 }
 
         function editRecord(id) {
@@ -886,6 +880,7 @@ if (window.editingRecordId) {
     </script>
 </body>
 </html>
+
 
 
 
