@@ -699,19 +699,47 @@
             });
         }
 
-        function renderRecords() {
-            const nameQ = document.getElementById('r-search-name').value.toLowerCase();
-            const flowerQ = document.getElementById('r-search-flower').value.toLowerCase();
-            const body = document.getElementById('r-list-body');
-            const filtered = competitions.filter(r => (r.memberName || "").toLowerCase().includes(nameQ) && (r.flowerNames || "").toLowerCase().includes(flowerQ));
-            body.innerHTML = filtered.map(r => `<tr><td>${r.memberName}</td><td>${r.flowerNames}</td><td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td><td><button onclick="editRecord('${r.id}')">改</button></td></tr>`).join('');
-        }
+function renderRecords() {
+    const nameQ = document.getElementById('r-search-name').value.toLowerCase();
+    const flowerQ = document.getElementById('r-search-flower').value.toLowerCase();
+    const body = document.getElementById('r-list-body');
 
-        function showAddRecord() {
-            const sel = document.getElementById('r-member-select');
-            sel.innerHTML = '<option value="">-- 請選擇 --</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-            document.getElementById('record-modal').style.display = 'flex';
-        }
+    // 過濾邏輯
+    const filtered = competitions.filter(r => 
+        (r.memberName || "").toLowerCase().includes(nameQ) && 
+        (r.flowerNames || "").toLowerCase().includes(flowerQ)
+    );
+
+    // 渲染表格內容
+body.innerHTML = filtered.map(r => `
+    <tr>
+        <td>${r.memberName}</td>
+        <td>${r.flowerNames}</td>
+        <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
+        <td><button onclick="editRecord('${r.id}')">改</button></td>
+    </tr>
+`).join('');
+}
+
+async function deleteRecord(id) {
+    if(!confirm("確定要刪除這筆競賽紀錄嗎？")) return;
+    competitions = competitions.filter(x => x.id.toString() !== id.toString());
+    renderRecords();
+    await saveData();
+}
+        
+function showAddRecord() {
+    // 關鍵修正：確保每次點擊「+ 新增紀錄」時，都清空編輯狀態
+    window.editingRecordId = null; 
+    
+    const sel = document.getElementById('r-member-select');
+    sel.innerHTML = '<option value="">-- 請選擇 --</option>' + 
+        members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+    
+    // 清空上次勾選的內容
+    document.getElementById('r-flower-pick-area').innerHTML = '請先選擇成員...';
+    document.getElementById('record-modal').style.display = 'flex';
+}
 
         function loadMemberFlowersForRecord(preSelectedNames = []) {
             const mid = document.getElementById('r-member-select').value;
@@ -739,18 +767,46 @@
             }).join('');
         }
 
-        async function saveRecord() {
-            const mid = document.getElementById('r-member-select').value;
-            const checks = document.querySelectorAll('input[name="r-flower-check"]:checked');
-            const m = members.find(x => x.id.toString() === mid);
-            const names = Array.from(checks).map(c => c.getAttribute('data-fname'));
-            const grades = Array.from(checks).map(c => c.value);
-            const order = { "仙品": 1, "華品": 2, "珍品": 3, "普品": 4, "凡品": 5 };
-            const max = grades.reduce((a, b) => order[a] < order[b] ? a : b, "凡品");
-            const data = { id: window.editingRecordId || Date.now().toString(), memberId: mid, memberName: m.name, maxGrade: max, flowerNames: names.join(', ') };
-            if (window.editingRecordId) competitions[competitions.findIndex(x => x.id.toString() === window.editingRecordId)] = data; else competitions.push(data);
-            renderRecords(); closeRecordModal(); await saveData();
+async function saveRecord() {
+    const mid = document.getElementById('r-member-select').value;
+    const checks = document.querySelectorAll('input[name="r-flower-check"]:checked');
+    
+    if (!mid) { alert("請選擇成員"); return; }
+    if (checks.length === 0) { alert("請至少勾選一朵花"); return; }
+
+    const m = members.find(x => x.id.toString() === mid);
+    const names = Array.from(checks).map(c => c.getAttribute('data-fname'));
+    const grades = Array.from(checks).map(c => c.value);
+    
+    const order = { "仙品": 1, "華品": 2, "珍品": 3, "普品": 4, "凡品": 5 };
+    const max = grades.reduce((a, b) => order[a] < order[b] ? a : b, "凡品");
+
+    const data = { 
+        id: window.editingRecordId || Date.now().toString(), 
+        memberId: mid, 
+        memberName: m.name, 
+        maxGrade: max, 
+        flowerNames: names.join(', ') 
+    };
+
+    // 檢查是「更新舊紀錄」還是「新增新紀錄」
+    if (window.editingRecordId) {
+        const idx = competitions.findIndex(x => x.id.toString() === window.editingRecordId.toString());
+        if (idx !== -1) {
+            competitions[idx] = data;
         }
+    } else {
+        competitions.push(data); // 這裡才會增加新的人
+    }
+
+    renderRecords();
+    closeRecordModal();
+    
+    // 重置 ID 防止影響下一次操作
+    window.editingRecordId = null; 
+    
+    await saveData();
+}
 
         function editRecord(id) {
             window.editingRecordId = id;
@@ -811,3 +867,4 @@
     </script>
 </body>
 </html>
+
