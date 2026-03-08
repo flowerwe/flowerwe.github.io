@@ -395,19 +395,20 @@ async function saveData(bypass = false) {
     const loadingText = document.querySelector('#loading-screen p');
     loadingText.innerText = "正在同步競賽紀錄至雲端...";
 
+    // 關鍵修正處：要把變數 competitions 賦值給 f_comps
     const payload = {
         action: 'updateAll',
         f_members: members,
         f_data: flowers,
-        f_comps: f_comps // 👈 確保這行存在
+        f_comps: competitions  // 👈 原本你寫 f_comps: f_comps，但變數名稱應為 competitions
     };
 
     try {
-        await fetch(SCRIPT_URL, {
+        const response = await fetch(SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors', // GAS 跨網域必須使用 no-cors
-            headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify(payload)
+            // 注意：如果你需要確認後端是否有收到，建議暫時拿掉 mode: 'no-cors' 
+            // 但 GAS 通常配合 no-cors 使用，所以重點在於 body 的內容
+            body: JSON.stringify(payload) 
         });
 
         // 稍微延遲後重新初始化，確保抓到的是雲端最新資料
@@ -874,6 +875,7 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
 
