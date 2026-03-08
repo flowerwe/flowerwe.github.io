@@ -146,41 +146,42 @@
             cursor: pointer;
         }
 
-        .flower-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 10px;
+.flower-grid {
+    display: grid;
+    /* 手機版 3 欄，平板以上自動填充 */
+    grid-template-columns: repeat(3, 1fr); 
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.flower-card {
+    background: var(--card-bg);
+    padding: 8px;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.flower-card img { 
+            width: 100%; 
+            aspect-ratio: 1 / 1; /* 強制寬高比 1:1 (正方形) */
+            object-fit: cover;    /* 裁切填滿容器，防止圖片拉伸變形 */
+            border-radius: 4px; 
+            display: block; 
+            background: #f0f0f0; /* 預載底色 */
         }
 
-        .flower-card {
-            background: var(--card-bg);
-            padding: 5px;
-            border-radius: 6px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-            cursor: pointer;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+.flower-card .name { font-size: 12px; font-weight: bold; margin-top: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
 
-            .flower-card img {
-                width: 100%;
-                aspect-ratio: 1 / 1;
-                object-fit: cover;
-                border-radius: 4px;
-            }
+        .grade-仙品 { color: var(--red); }
+        .grade-華品 { color: var(--orange); }
+        .grade-珍品 { color: var(--purple); }
+        .grade-普品 { color: var(--blue); }
+        .grade-凡品 { color: var(--green); }
 
-            .flower-card .name {
-                font-size: 13px;
-                margin-top: 4px;
-                font-weight: bold;
-                width: 100%;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; font-size: 14px; }
+        th, td { border: 1px solid #eee; padding: 10px 8px; text-align: left; }
+        th { background: #f8f9fa; }
 
         .grade-仙品 {
             color: var(--red);
@@ -221,64 +222,21 @@
             background: #f8f9fa;
         }
 
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            align-items: center;
-            justify-content: center;
+@media screen and (min-width: 768px) {
+.flower-grid { 
+            display: grid; 
+            /* 手機版強制 3 欄，平板以上自動填充 */
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+            margin-top: 10px; 
         }
-
-        .modal-content {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-            position: relative;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .close-btn {
-            position: absolute;
-            right: 15px;
-            top: 10px;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .form-group {
-            margin-bottom: 10px;
-        }
-
-            .form-group label {
-                display: block;
-                margin-bottom: 5px;
-                font-weight: bold;
-            }
-
-            .form-group input, .form-group select {
-                width: 100%;
-                box-sizing: border-box;
-            }
-
-        @media screen and (max-width: 600px) {
-            th, td {
-                padding: 5px 2px;
-                font-size: 11px;
-            }
-
-            .controls input {
-                width: 46%;
-                margin-bottom: 5px;
-            }
-        }
+    /* 彈窗 */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 20px; border-radius: 12px; width: 95%; max-width: 450px; position: relative; max-height: 85vh; overflow-y: auto; }
+        .close-btn { position: absolute; right: 15px; top: 10px; font-size: 24px; cursor: pointer; }
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; box-sizing: border-box; }
     </style>
 </head>
 <body>
@@ -367,7 +325,8 @@
             }
             document.getElementById('loading-screen').style.display = 'none';
         }
-
+// 統一呼叫名稱
+function showAddMember(id=null) { openMemberModal(id); }
 async function saveData(bypass = false) {
     if (!isAdmin && !bypass) {
         console.warn("非管理員身分，取消儲存");
@@ -511,28 +470,32 @@ function toggleAllFlowers(checked) {
     });
 }
 
-async function saveMemberData() {
+function saveMember(targetId) {
     const name = document.getElementById('m-name').value;
+    const gameId = document.getElementById('m-id').value;
     if (!name) { alert("請輸入名稱"); return; }
 
-    const checks = document.querySelectorAll('input[name="m-flower-check"]:checked');
-    const data = { 
-        id: window.editingMemberId || Date.now().toString(), 
-        name, 
-        gameId: document.getElementById('m-gameid').value, 
-        ownedFlowers: Array.from(checks).map(c => c.value) 
+    // 取得勾選的花朵 ID
+    const checks = document.querySelectorAll('input[name="m-flower"]:checked');
+    const ownedFlowers = Array.from(checks).map(c => c.value);
+
+    const data = {
+        id: (targetId === 'null' || !targetId) ? Date.now().toString() : targetId,
+        name: name,
+        gameId: gameId,
+        ownedFlowers: ownedFlowers
     };
 
-    if (window.editingMemberId) {
-        members[members.findIndex(x => x.id.toString() === window.editingMemberId.toString())] = data;
-    } else {
+    if (targetId === 'null' || !targetId) {
         members.push(data);
+    } else {
+        const idx = members.findIndex(x => x.id.toString() === targetId.toString());
+        if (idx !== -1) members[idx] = data;
     }
 
     renderMembers();
     closeModal();
-    // 關鍵：呼叫 saveData 時傳入 true，繞過管理員檢查
-    await saveData(true); 
+    saveData(true); // 自動同步
 }
 
 function renderFlowers() {
@@ -558,13 +521,13 @@ function renderFlowers() {
         });
 
     // 3. 渲染出 HTML
-    container.innerHTML = sortedFlowers.map(f => `
-        <div class="card" onclick="showFlowerDetail('${f.id}')">
-            <img src="${f.image || 'https://via.placeholder.com/150'}">
-            <div class="name grade-${f.grade}">${f.name}</div>
-            <div style="font-size:10px; color:#888;">${f.grade} | ${f.score}分</div>
-        </div>
-    `).join('');
+container.innerHTML = sortedFlowers.map(f => `
+    <div class="flower-card" onclick="showFlowerDetail('${f.id}')">
+        <img src="${f.image || 'https://via.placeholder.com/150'}">
+        <div class="name grade-${f.grade}">${f.name}</div>
+        <div style="font-size:10px; color:#888;">${f.grade} | ${f.score}分</div>
+    </div>
+`).join('');
 }
         function showFlowerDetail(id) {
             const f = flowers.find(x => x.id.toString() === id.toString());
@@ -646,11 +609,9 @@ async function saveFlower(editId) {
             body.innerHTML = filtered.map(r => `<tr><td>${r.memberName}</td><td>${r.flowerNames}</td><td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td><td><button onclick="editRecord('${r.id}')">改</button></td></tr>`).join('');
         }
 
-        function showAddRecord() {
-            const sel = document.getElementById('r-member-select');
-            sel.innerHTML = '<option value="">-- 請選擇 --</option>' + members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-            document.getElementById('record-modal').style.display = 'flex';
-        }
+function showAddRecord() {
+    openRecordModal();
+}
 
         function loadMemberFlowersForRecord(preSelected = []) {
             const mid = document.getElementById('r-member-select').value;
@@ -807,6 +768,7 @@ function compressImage(file, maxWidth = 400, quality = 0.6) {
     </script>
 </body>
 </html>
+
 
 
 
