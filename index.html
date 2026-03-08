@@ -542,34 +542,33 @@ async function deleteMember(id) {
             }).join('');
         }
 
-        async function saveMember() {
-            const name = document.getElementById('m-name').value;
-            if (!name) { alert("請輸入名稱"); return; }
+async function saveMember() {
+    const name = document.getElementById('m-name').value;
+    if (!name) { alert("請輸入名稱"); return; }
 
-            // 抓取所有被勾選的 checkbox
-            const checks = document.querySelectorAll('.m-flower-cb:checked');
-            const selectedFlowers = Array.from(checks).map(c => c.value);
+    const checks = document.querySelectorAll('.m-flower-cb:checked');
+    const selectedFlowers = Array.from(checks).map(c => c.value);
 
-            const data = {
-                id: window.editingMemberId || Date.now().toString(),
-                name: name,
-                gameId: document.getElementById('m-gameid').value,
-                ownedFlowers: selectedFlowers // 儲存為陣列
-            };
+    const data = {
+        id: window.editingMemberId || Date.now().toString(),
+        name: name,
+        gameId: document.getElementById('m-gameid').value,
+        ownedFlowers: selectedFlowers
+    };
 
-            if (window.editingMemberId) {
-                const idx = members.findIndex(x => x.id.toString() === window.editingMemberId.toString());
-                members[idx] = data;
-            } else {
-                members.push(data);
-            }
+    if (window.editingMemberId) {
+        const idx = members.findIndex(x => x.id.toString() === window.editingMemberId.toString());
+        if (idx !== -1) members[idx] = data;
+    } else {
+        members.push(data);
+    }
 
-            renderMembers();
-            closeModal();
+    renderMembers();
+    closeModal();
 
-            // 儲存至雲端
-            await saveData(true);
-        }
+    // 這裡同樣要傳 true
+    await saveData(true);
+}
 
         function renderFlowers() {
             const term = document.getElementById('flower-search').value.toLowerCase();
@@ -798,7 +797,7 @@ async function saveRecord() {
     };
 
     // 檢查是「更新舊紀錄」還是「新增新紀錄」
-if (window.editingRecordId) {
+    if (window.editingRecordId) {
         const idx = competitions.findIndex(x => x.id.toString() === window.editingRecordId.toString());
         if (idx !== -1) competitions[idx] = data;
     } else {
@@ -812,14 +811,7 @@ if (window.editingRecordId) {
     // 關鍵修正：傳入 true，讓普通成員也能同步這筆紀錄
     await saveData(true); 
 }
-
-renderRecords();
-    closeRecordModal();
-    window.editingRecordId = null; 
-    
-    // 加上 true，代表這筆操作「繞過」管理員權限檢查，直接同步
-    await saveData(true); 
-}
+// 這裡刪除了原本多出的多餘括號與重複程式碼
 
         function editRecord(id) {
             window.editingRecordId = id;
@@ -880,6 +872,7 @@ renderRecords();
     </script>
 </body>
 </html>
+
 
 
 
