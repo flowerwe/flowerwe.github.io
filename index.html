@@ -434,21 +434,36 @@
         }
         const GRADE_ORDER = { '仙品': 1, '華品': 2, '珍品': 3, '普品': 4, '凡品': 5 };
         // 刪除原本重複的 GRADE_WEIGHT，統一使用 GRADE_ORDER
-        function renderMembers() {
-            const q = (document.getElementById('member-search').value || "").toLowerCase();
-            const grid = document.getElementById('member-card-grid');
-            const filtered = members.filter(m => m.name.toLowerCase().includes(q) || (m.gameId && m.gameId.toString().includes(q)));
-            grid.innerHTML = filtered.map(m => `
-                        <div class="member-card" onclick="showMemberCard('${m.id}')">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <div>
-                                    <strong>${m.name}</strong>
-                                    <div style="color:#888; font-size:12px;">ID: ${m.gameId || '-'}</div>
-                                </div>
-                                <button onclick="event.stopPropagation(); showAddMember('${m.id}')" style="background:#007bff; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:12px;">編輯</button>
-                            </div>
-                        </div>`).join('');
-        }
+function renderMembers() {
+    const q = (document.getElementById('member-search').value || "").toLowerCase();
+    const grid = document.getElementById('member-card-grid');
+    const filtered = members.filter(m => m.name.toLowerCase().includes(q) || (m.gameId && m.gameId.toString().includes(q)));
+    
+    grid.innerHTML = filtered.map(m => `
+        <div class="member-card" onclick="showMemberCard('${m.id}')">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong>${m.name}</strong>
+                    <div style="color:#888; font-size:12px;">ID: ${m.gameId || '-'}</div>
+                </div>
+                <div>
+                    <button onclick="event.stopPropagation(); showAddMember('${m.id}')" style="background:#007bff; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;">編輯</button>
+                    ${isAdmin ? `<button onclick="event.stopPropagation(); deleteMember('${m.id}')" style="background:#d9534f; color:white; border:none; padding:4px 8px; border-radius:4px; font-size:12px; margin-left:5px; cursor:pointer;">刪除</button>` : ''}
+                </div>
+            </div>
+        </div>`).join('');
+}
+
+// 刪除成員的邏輯
+async function deleteMember(id) {
+    const m = members.find(x => x.id.toString() === id.toString());
+    if (!confirm(`確定要刪除成員「${m.name}」嗎？這將無法復原。`)) return;
+
+    members = members.filter(x => x.id.toString() !== id.toString());
+    
+    renderMembers(); // 立即更新畫面
+    await saveData(); // 同步到雲端
+}
 
         function showMemberCard(id) {
             const m = members.find(x => x.id.toString() === id.toString());
@@ -703,29 +718,33 @@ function renderRecords() {
     const nameQ = document.getElementById('r-search-name').value.toLowerCase();
     const flowerQ = document.getElementById('r-search-flower').value.toLowerCase();
     const body = document.getElementById('r-list-body');
-
-    // 過濾邏輯
+    
     const filtered = competitions.filter(r => 
         (r.memberName || "").toLowerCase().includes(nameQ) && 
         (r.flowerNames || "").toLowerCase().includes(flowerQ)
     );
 
-    // 渲染表格內容
-body.innerHTML = filtered.map(r => `
-    <tr>
-        <td>${r.memberName}</td>
-        <td>${r.flowerNames}</td>
-        <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
-        <td><button onclick="editRecord('${r.id}')">改</button></td>
-    </tr>
-`).join('');
+    body.innerHTML = filtered.map(r => `
+        <tr>
+            <td>${r.memberName}</td>
+            <td><small>${r.flowerNames}</small></td>
+            <td><span class="grade-${r.maxGrade}">${r.maxGrade}</span></td>
+            <td>
+                <button onclick="editRecord('${r.id}')" style="padding:2px 5px;">改</button>
+                ${isAdmin ? `<button onclick="deleteRecord('${r.id}')" style="background:#d9534f; color:white; border:none; padding:2px 5px; margin-left:5px; border-radius:3px; cursor:pointer;">刪</button>` : ''}
+            </td>
+        </tr>
+    `).join('');
 }
-
+        // 刪除紀錄的邏輯
 async function deleteRecord(id) {
-    if(!confirm("確定要刪除這筆競賽紀錄嗎？")) return;
+    if (!confirm("確定要刪除這筆競賽紀錄嗎？")) return;
+    
+    // 過濾掉該 ID
     competitions = competitions.filter(x => x.id.toString() !== id.toString());
-    renderRecords();
-    await saveData();
+    
+    renderRecords(); // 立即更新畫面
+    await saveData(); // 同步到雲端
 }
         
 function showAddRecord() {
@@ -867,4 +886,5 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
