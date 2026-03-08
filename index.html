@@ -748,14 +748,12 @@ async function deleteRecord(id) {
 }
         
 function showAddRecord() {
-    // 關鍵修正：確保每次點擊「+ 新增紀錄」時，都清空編輯狀態
-    window.editingRecordId = null; 
+    window.editingRecordId = null; // 👈 這一行最重要，防止覆蓋舊資料
     
     const sel = document.getElementById('r-member-select');
     sel.innerHTML = '<option value="">-- 請選擇 --</option>' + 
         members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
     
-    // 清空上次勾選的內容
     document.getElementById('r-flower-pick-area').innerHTML = '請先選擇成員...';
     document.getElementById('record-modal').style.display = 'flex';
 }
@@ -886,5 +884,6 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
