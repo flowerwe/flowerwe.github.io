@@ -371,7 +371,7 @@
 </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwRT5D4-LQBjocV9ps9Ey2SiI89spFIJhBWQLbGrKK5ecb-wf6bqa-rwcVRz81BOyga/exec";
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzj8EQcLskcvo8HzvSIDHkziHE682MyQpC8bpo18HzqU-6F-bJQolRiPcpT2irz8AWn/exec";
         let members = [];
         let flowers = [];
         let competitions = [];
@@ -628,7 +628,8 @@ async function saveMember() {
         async function saveFlower(editId) {
             // 取得圖片檔案
             const file = document.getElementById('f-img').files[0];
-            let base64 = "";
+            let // 在 saveFlower 函式中
+base64 = await compressImage(file, 200, 0.4); // maxWidth 縮到 200, quality 降到 0.4;
 
             // 處理圖片：有選新圖就壓縮，沒選新圖就保留舊的
             if (file) {
@@ -898,6 +899,7 @@ async function saveRecord() {
     </script>
 </body>
 </html>
+
 
 
 
